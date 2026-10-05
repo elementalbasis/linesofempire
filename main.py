@@ -19,6 +19,7 @@ INITIAL_LAT = 50.0
 INITIAL_ZOOM = 300.0
 CAMERA_SPEED = 60.0 # degrees per second
 SPEED_MULTIPLIER = 3.0
+ZOOM_SPEED = 1.5
 
 # These global variables will change when user presses a key.
 center_lon = INITIAL_LON
@@ -181,6 +182,10 @@ while running:
         center_lon -= speed * dt
     if keys[pygame.K_d]:
         center_lon += speed * dt
+    if keys[pygame.K_e]:
+        zoom *= math.exp(ZOOM_SPEED * dt)
+    if keys[pygame.K_q]:
+        zoom *= math.exp(-ZOOM_SPEED * dt)
 
     # Constrain the coordinates
     center_lat = max(-90.0, min(90.0, center_lat))
