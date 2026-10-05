@@ -247,7 +247,7 @@ while running:
     speed = CAMERA_SPEED
     keys = pygame.key.get_pressed()
     if keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]:
-        speed *= 3.0
+        speed *= SPEED_MULTIPLIER
     if keys[pygame.K_w]:
         center_lat += speed * dt
     if keys[pygame.K_s]:
