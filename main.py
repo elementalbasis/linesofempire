@@ -23,10 +23,10 @@ SPEED_MULTIPLIER = 3.0
 ZOOM_SPEED = 1.5
 
 # Map colors and styling
-LAND_COLOR = to_rgb('#d8c8a8')
-OCEAN_COLOR = to_rgb('#588080')
-COAST_COLOR = to_rgb('#303020')
-OUTSIDE_COLOR = to_rgb('#181820')
+LAND_COLOR = to_rgb('#d8c99b')
+OCEAN_COLOR = to_rgb('#557c7a')
+COAST_COLOR = to_rgb('#282620')
+OUTSIDE_COLOR = to_rgb('#18191b')
 COAST_THICKNESS = 2.0
 RIVER_THICKNESS = 1.25
 BORDER_THICKNESS = 1.0
