@@ -21,6 +21,8 @@ INITIAL_ZOOM = 300.0
 CAMERA_SPEED = 60.0 # degrees per second
 SPEED_MULTIPLIER = 3.0
 ZOOM_SPEED = 1.5
+MIN_ZOOM_MULTIPLIER = 0.35
+MAX_ZOOM_MULTIPLIER = 8
 
 # Map colors and styling
 LAND_COLOR = to_rgb('#d8c99b')
@@ -138,6 +140,16 @@ def camera_basis(lon, lat):
             )
 
     return east, north, forward
+
+
+
+# Helper functions for zoom
+
+def min_zoom(width, height):
+    return MIN_ZOOM_MULTIPLIER * min(width, height)
+
+def max_zoom(width, height):
+    return MAX_ZOOM_MULTIPLIER * min(width, height)
 
 
 
@@ -300,6 +312,9 @@ river_vao = ctx.simple_vertex_array(
 
 # Game loop
 while running:
+    # Get window size
+    width, height = pygame.display.get_window_size()
+
     # Handle camera movement
     dt = clock.tick(60) / 1000.0
     speed = CAMERA_SPEED
@@ -323,6 +338,9 @@ while running:
     center_lat = max(-90.0, min(90.0, center_lat))
     center_lon = (center_lon + 180.0) % 360.0 - 180.0
 
+    # Constrain zoom
+    zoom = max(min_zoom(width, height), min(max_zoom(width, height), zoom))
+
     # Handle events
     for event in pygame.event.get():
         # This occurs if the user clicks X to close the window.
@@ -338,9 +356,6 @@ while running:
 
     # OpenGL owns the buffer, so we clear like this instead.
     ctx.clear(*OUTSIDE_COLOR)
-
-    # Get window size
-    width, height = pygame.display.get_window_size()
 
 
 
