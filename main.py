@@ -34,9 +34,11 @@ LAND_COLOR = to_rgb('#d8c99b')
 OCEAN_COLOR = to_rgb('#557c7a')
 COAST_COLOR = to_rgb('#282620')
 OUTSIDE_COLOR = to_rgb('#18191b')
+BORDER_COLOR = to_rgb('#635441')
 COAST_THICKNESS = 2.0
 RIVER_THICKNESS = 1.25
 BORDER_THICKNESS = 1.0
+#PROVINCE_THICKNESS = 0.75
 HORIZON_THICKNESS = 2.0
 OCEAN_SEGMENTS = 256
 
@@ -120,7 +122,19 @@ borders_filename = shpreader.natural_earth(
         category = 'cultural',
         name = 'admin_0_boundary_lines_land',
         )
-
+borders = list(
+        shpreader.Reader(borders_filename).geometries()
+        )
+'''
+provinces_filename = shpreader.natural_earth(
+        resolution = MAP_SCALE,
+        category = 'cultural',
+        name = 'admin_1_boundary_lines_land',
+        )
+provinces = list(
+        shpreader.Reader(provinces_filename).geometries()
+        )
+'''
 
 
 # Helper function for coordinate transform
@@ -331,6 +345,55 @@ river_vao = ctx.simple_vertex_array(
 
 
 
+# Load international borders
+border_vertices = []
+for geom in borders:
+    for line in get_parts(geom):
+        coords = list(line.coords)
+        xyz = [lonlat_to_xyz(lon, lat) for lon, lat in coords]
+        for a, b in zip(xyz[:-1], xyz[1:]):
+            border_vertices.append(a)
+            border_vertices.append(b)
+border_vertices = np.asarray(
+        border_vertices,
+        dtype = 'f4'
+        )
+border_buffer = ctx.buffer(
+        border_vertices.tobytes()
+        )
+border_vao = ctx.simple_vertex_array(
+        program,
+        border_buffer,
+        'in_pos',
+        )
+
+
+
+# Load province borders
+'''
+province_vertices = []
+for geom in provinces:
+    for line in get_parts(geom):
+        coords = list(line.coords)
+        xyz = [lonlat_to_xyz(lon, lat) for lon, lat in coords]
+        for a, b in zip(xyz[:-1], xyz[1:]):
+            province_vertices.append(a)
+            province_vertices.append(b)
+province_vertices = np.asarray(
+        province_vertices,
+        dtype = 'f4'
+        )
+province_buffer = ctx.buffer(
+        province_vertices.tobytes()
+        )
+province_vao = ctx.simple_vertex_array(
+        program,
+        province_buffer,
+        'in_pos',
+        )
+'''
+
+
 # Game loop
 while running:
     # Get window size
@@ -431,6 +494,12 @@ while running:
         program['u_color'].value = OCEAN_COLOR
         ctx.line_width = RIVER_THICKNESS
         river_vao.render(mode = moderngl.LINES)
+
+    # Borders
+    if show_borders:
+        program['u_color'].value = BORDER_COLOR
+        ctx.line_width = BORDER_THICKNESS
+        border_vao.render(mode = moderngl.LINES)
 
     # Coastlines
     program['u_color'].value = COAST_COLOR
