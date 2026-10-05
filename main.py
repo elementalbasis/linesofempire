@@ -5,9 +5,10 @@ import math
 import numpy as np
 
 import matplotlib.pyplot as plt
+from matplotlib.colors import to_rgb
 
-# This is needed to convert QGIS line data into a list of coordinates
-from shapely import get_parts
+# This is needed to convert QGIS data into a list of points
+from shapely import get_parts, constrained_delaunay_triangles
 
 
 
@@ -20,6 +21,17 @@ INITIAL_ZOOM = 300.0
 CAMERA_SPEED = 60.0 # degrees per second
 SPEED_MULTIPLIER = 3.0
 ZOOM_SPEED = 1.5
+
+# Map colors and styling
+LAND_COLOR = to_rgb('#d8c8a8')
+OCEAN_COLOR = to_rgb('#588080')
+COAST_COLOR = to_rgb('#303020')
+OUTSIDE_COLOR = to_rgb('#181820')
+COAST_THICKNESS = 2.0
+RIVER_THICKNESS = 1.25
+BORDER_THICKNESS = 1.0
+HORIZON_THICKNESS = 2.0
+OCEAN_SEGMENTS = 256
 
 # These global variables will change when user presses a key.
 center_lon = INITIAL_LON
@@ -52,6 +64,9 @@ land_filename = shpreader.natural_earth(
         resolution = MAP_SCALE,
         category = 'physical',
         name = 'land',
+        )
+land = list(
+        shpreader.Reader(land_filename).geometries()
         )
 lakes_filename = shpreader.natural_earth(
         resolution = MAP_SCALE,
@@ -120,6 +135,52 @@ def camera_basis(lon, lat):
 
 
 
+# Load my custom OpenGL shaders
+
+VERTEX_SHADER_FILENAME = 'vertex_shader.glsl'
+FRAGMENT_SHADER_FILENAME = 'fragment_shader.glsl'
+CIRCLE_VERTEX_SHADER_FILENAME = 'circle_vertex_shader.glsl'
+
+with open(VERTEX_SHADER_FILENAME) as f:
+    vertex_shader = f.read()
+with open(FRAGMENT_SHADER_FILENAME) as f:
+    fragment_shader = f.read()
+with open(CIRCLE_VERTEX_SHADER_FILENAME) as f:
+    circle_vertex_shader = f.read()
+
+program = ctx.program(
+        vertex_shader = vertex_shader,
+        fragment_shader = fragment_shader,
+        )
+
+
+
+# Create ocean disk out of triangles
+ocean_vertices = [(0.0, 0.0)] # Start with the origin
+for i in range(OCEAN_SEGMENTS + 1):
+    angle = 2 * math.pi * i / OCEAN_SEGMENTS
+    ocean_vertices.append((math.cos(angle), math.sin(angle)))
+ocean_vertices = np.asarray(
+        ocean_vertices,
+        dtype = 'f4'
+        )
+
+ocean_program = ctx.program(
+        vertex_shader = circle_vertex_shader,
+        fragment_shader = fragment_shader,
+        )
+ocean_buffer = ctx.buffer(
+        ocean_vertices.tobytes()
+        )
+ocean_vao = ctx.simple_vertex_array(
+        ocean_program,
+        ocean_buffer,
+        'in_pos',
+        )
+
+
+
+
 # Load the coastline data into a buffer
 
 coast_vertices = []
@@ -140,28 +201,41 @@ coast_buffer = ctx.buffer(
         coast_vertices.tobytes()
         )
 
-
-
-# Load my custom OpenGL shaders
-
-VERTEX_SHADER_FILENAME = "vertex_shader.glsl"
-FRAGMENT_SHADER_FILENAME = "fragment_shader.glsl"
-
-with open(VERTEX_SHADER_FILENAME) as f:
-    vertex_shader = f.read()
-with open(FRAGMENT_SHADER_FILENAME) as f:
-    fragment_shader = f.read()
-
-program = ctx.program(
-        vertex_shader = vertex_shader,
-        fragment_shader = fragment_shader,
-        )
-
 # Load the coastline buffer into a vertex array
 coast_vao = ctx.simple_vertex_array(
         program,
         coast_buffer,
-        "in_pos",
+        'in_pos',
+        )
+
+
+
+# Load land polygons
+land_vertices = []
+for geom in land:
+    for polygon in get_parts(geom):
+        for triangle in get_parts(constrained_delaunay_triangles(polygon)):
+            # These coordinates come in a closed loop, so we must exclude the
+            # last element.
+            coords = list(triangle.exterior.coords)[:-1]
+
+            for lon, lat in coords:
+                land_vertices.append(
+                        lonlat_to_xyz(lon, lat)
+                        )
+land_vertices = np.asarray(
+        land_vertices,
+        dtype = 'f4',
+        )
+land_buffer = ctx.buffer(
+        land_vertices.tobytes()
+        )
+
+# Load the land buffer into a vertex array
+land_vao = ctx.simple_vertex_array(
+        program,
+        land_buffer,
+        'in_pos',
         )
 
 
@@ -205,21 +279,34 @@ while running:
     #screen.fill('purple')
 
     # OpenGL owns the buffer, so we clear like this instead.
-    ctx.clear(1, 1, 1, 1)
+    ctx.clear(*OUTSIDE_COLOR)
 
     # Get window size
     width, height = pygame.display.get_window_size()
 
+
+
     # RENDER YOUR GAME HERE
 
     # Define the camera basis and pass it to the shaders
-    east, north, forward = camera_basis(center_lon, center_lat)
-    program["u_east"].value = east
-    program["u_north"].value = north
-    program["u_forward"].value = forward
-    program["u_viewport"].value = (float(width), float(height))
-    program["u_zoom"].value = zoom
 
+    east, north, forward = camera_basis(center_lon, center_lat)
+    program['u_east'].value = east
+    program['u_north'].value = north
+    program['u_forward'].value = forward
+    program['u_viewport'].value = (float(width), float(height))
+    program['u_zoom'].value = zoom
+
+    ocean_program['u_viewport'].value = (float(width), float(height))
+    ocean_program['u_zoom'].value = zoom
+    ocean_program['u_color'].value = OCEAN_COLOR
+    ocean_vao.render(mode = moderngl.TRIANGLE_FAN)
+
+    program['u_color'].value = LAND_COLOR
+    land_vao.render(mode = moderngl.TRIANGLES)
+
+    program['u_color'].value = COAST_COLOR
+    ctx.line_width = COAST_THICKNESS
     coast_vao.render(mode = moderngl.LINES)
 
     # flip() the display to put your work on screen
