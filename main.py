@@ -73,6 +73,9 @@ lakes_filename = shpreader.natural_earth(
         category = 'physical',
         name = 'lakes',
         )
+lakes = list(
+        shpreader.Reader(lakes_filename).geometries()
+        )
 coastlines_filename = shpreader.natural_earth(
         resolution = MAP_SCALE,
         category = 'physical',
@@ -85,6 +88,9 @@ rivers_filename = shpreader.natural_earth(
         resolution = MAP_SCALE,
         category = 'physical',
         name = 'rivers_lake_centerlines',
+        )
+rivers = list(
+        shpreader.Reader(rivers_filename).geometries()
         )
 borders_filename = shpreader.natural_earth(
         resolution = MAP_SCALE,
@@ -240,6 +246,58 @@ land_vao = ctx.simple_vertex_array(
 
 
 
+# Load lake polygons
+lake_vertices = []
+for geom in lakes:
+    for polygon in get_parts(geom):
+        for triangle in get_parts(constrained_delaunay_triangles(polygon)):
+            coords = list(triangle.exterior.coords)[:-1]
+
+            for lon, lat in coords:
+                lake_vertices.append(
+                        lonlat_to_xyz(lon, lat)
+                        )
+lake_vertices = np.asarray(
+        lake_vertices,
+        dtype = 'f4',
+        )
+lake_buffer = ctx.buffer(
+        lake_vertices.tobytes()
+        )
+lake_vao = ctx.simple_vertex_array(
+        program,
+        lake_buffer,
+        'in_pos',
+        )
+
+
+
+# Load river lines
+river_vertices = []
+for geom in rivers:
+    for line in get_parts(geom):
+        coords = list(line.coords)
+        xyz = [lonlat_to_xyz(lon, lat) for lon, lat in coords]
+
+        for a, b in zip(xyz[:-1], xyz[1:]):
+            river_vertices.append(a)
+            river_vertices.append(b)
+
+river_vertices = np.asarray(
+        river_vertices,
+        dtype = 'f4'
+        )
+river_buffer = ctx.buffer(
+        river_vertices.tobytes()
+        )
+river_vao = ctx.simple_vertex_array(
+        program,
+        river_buffer,
+        'in_pos'
+        )
+
+
+
 # Game loop
 while running:
     # Handle camera movement
@@ -289,7 +347,6 @@ while running:
     # RENDER YOUR GAME HERE
 
     # Define the camera basis and pass it to the shaders
-
     east, north, forward = camera_basis(center_lon, center_lat)
     program['u_east'].value = east
     program['u_north'].value = north
@@ -297,14 +354,26 @@ while running:
     program['u_viewport'].value = (float(width), float(height))
     program['u_zoom'].value = zoom
 
+    # Ocean
     ocean_program['u_viewport'].value = (float(width), float(height))
     ocean_program['u_zoom'].value = zoom
     ocean_program['u_color'].value = OCEAN_COLOR
     ocean_vao.render(mode = moderngl.TRIANGLE_FAN)
 
+    # Land
     program['u_color'].value = LAND_COLOR
     land_vao.render(mode = moderngl.TRIANGLES)
 
+    # Lakes
+    program['u_color'].value = OCEAN_COLOR
+    lake_vao.render(mode = moderngl.TRIANGLES)
+
+    # Rivers
+    program['u_color'].value = OCEAN_COLOR
+    ctx.line_width = RIVER_THICKNESS
+    river_vao.render(mode = moderngl.LINES)
+
+    # Coastlines
     program['u_color'].value = COAST_COLOR
     ctx.line_width = COAST_THICKNESS
     coast_vao.render(mode = moderngl.LINES)
