@@ -4,6 +4,11 @@ import cartopy.io.shapereader as shpreader
 import math
 import numpy as np
 
+# ImGui
+import imgui
+from imgui.integrations.pygame import PygameRenderer
+from imgui.integrations.opengl import ProgrammablePipelineRenderer
+
 import matplotlib.pyplot as plt
 from matplotlib.colors import to_rgb
 
@@ -35,6 +40,11 @@ BORDER_THICKNESS = 1.0
 HORIZON_THICKNESS = 2.0
 OCEAN_SEGMENTS = 256
 
+# Bools for whether to show various features
+show_lakes = True
+show_rivers = True
+show_borders = True
+
 # These global variables will change when user presses a key.
 center_lon = INITIAL_LON
 center_lat = INITIAL_LAT
@@ -58,6 +68,17 @@ running = True
 
 # OpenGL context
 ctx = moderngl.create_context()
+
+# ImGui setup
+class ModernPygameRenderer(
+        ProgrammablePipelineRenderer,
+        PygameRenderer
+        ):
+    pass
+imgui.create_context()
+renderer = ModernPygameRenderer()
+io = imgui.get_io()
+io.display_size = pygame.display.get_window_size()
 
 
 
@@ -343,6 +364,9 @@ while running:
 
     # Handle events
     for event in pygame.event.get():
+        # Pass the event to ImGui
+        renderer.process_event(event)
+
         # This occurs if the user clicks X to close the window.
         if event.type == pygame.QUIT:
             running = False
@@ -354,12 +378,30 @@ while running:
     # fill the screen with a color to wipe away anything from last frame
     #screen.fill('purple')
 
+
+
+    # Handle the menu bar
+    renderer.process_inputs()
+    imgui.new_frame()
+    if imgui.begin_main_menu_bar():
+        if imgui.begin_menu('View', True):
+            _, show_lakes = imgui.menu_item(
+                    'Lakes', '', show_lakes, True
+                    )
+            _, show_rivers = imgui.menu_item(
+                    'Rivers', '', show_rivers, True
+                    )
+            _, show_borders = imgui.menu_item(
+                    'Borders', '', show_borders, True
+                    )
+            imgui.end_menu()
+        imgui.end_main_menu_bar()
+
+
+
+
     # OpenGL owns the buffer, so we clear like this instead.
     ctx.clear(*OUTSIDE_COLOR)
-
-
-
-    # RENDER YOUR GAME HERE
 
     # Define the camera basis and pass it to the shaders
     east, north, forward = camera_basis(center_lon, center_lat)
@@ -380,18 +422,24 @@ while running:
     land_vao.render(mode = moderngl.TRIANGLES)
 
     # Lakes
-    program['u_color'].value = OCEAN_COLOR
-    lake_vao.render(mode = moderngl.TRIANGLES)
+    if show_lakes:
+        program['u_color'].value = OCEAN_COLOR
+        lake_vao.render(mode = moderngl.TRIANGLES)
 
     # Rivers
-    program['u_color'].value = OCEAN_COLOR
-    ctx.line_width = RIVER_THICKNESS
-    river_vao.render(mode = moderngl.LINES)
+    if show_rivers:
+        program['u_color'].value = OCEAN_COLOR
+        ctx.line_width = RIVER_THICKNESS
+        river_vao.render(mode = moderngl.LINES)
 
     # Coastlines
     program['u_color'].value = COAST_COLOR
     ctx.line_width = COAST_THICKNESS
     coast_vao.render(mode = moderngl.LINES)
+
+    # Render the top menu on top of the world
+    imgui.render()
+    renderer.render(imgui.get_draw_data())
 
     # flip() the display to put your work on screen
     #
@@ -408,4 +456,5 @@ while running:
 
     clock.tick(60) # limits FPS to 60
 
+renderer.shutdown()
 pygame.quit()
