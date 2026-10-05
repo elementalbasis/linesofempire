@@ -17,6 +17,8 @@ MAP_SCALE = '50m' # Options are: 10m, 50m, 110m
 INITIAL_LON = 15.0
 INITIAL_LAT = 50.0
 INITIAL_ZOOM = 300.0
+CAMERA_SPEED = 60.0 # degrees per second
+SPEED_MULTIPLIER = 3.0
 
 # These global variables will change when user presses a key.
 center_lon = INITIAL_LON
@@ -109,8 +111,8 @@ def camera_basis(lon, lat):
     north = (
             - math.sin(lat) * math.cos(lon),
             - math.sin(lat) * math.sin(lon),
-            #math.cos(lat),
-            math.sin(lat),
+            math.cos(lat),
+            #math.sin(lat),
             )
 
     return east, north, forward
@@ -165,6 +167,25 @@ coast_vao = ctx.simple_vertex_array(
 
 # Game loop
 while running:
+    # Handle camera movement
+    dt = clock.tick(60) / 1000.0
+    speed = CAMERA_SPEED
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]:
+        speed *= 3.0
+    if keys[pygame.K_w]:
+        center_lat += speed * dt
+    if keys[pygame.K_s]:
+        center_lat -= speed * dt
+    if keys[pygame.K_a]:
+        center_lon -= speed * dt
+    if keys[pygame.K_d]:
+        center_lon += speed * dt
+
+    # Constrain the coordinates
+    center_lat = max(-90.0, min(90.0, center_lat))
+    center_lon = (center_lon + 180.0) % 360.0 - 180.0
+
     # Handle events
     for event in pygame.event.get():
         # This occurs if the user clicks X to close the window.
