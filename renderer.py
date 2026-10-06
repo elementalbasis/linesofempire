@@ -1,5 +1,5 @@
 import moderngl
-from OpenGL.GL import GL_CLIP_DISTANCE0
+from OpenGL.GL import GL_CLIP_DISTANCE0, GL_PROGRAM_POINT_SIZE
 
 import config
 from common import read_file
@@ -10,6 +10,7 @@ DISK_VERTEX_SHADER = 'shaders/disk.vert'
 SOLID_FRAGMENT_SHADER = 'shaders/solid.frag'
 VECTOR_GEOMETRY_SHADER = 'shaders/vector.geom'
 VECTOR_VERTEX_SHADER = 'shaders/vector.vert'
+POINT_VERTEX_SHADER = 'shaders/point.vert'
 
 class Renderer:
     def __init__(self, world):
@@ -23,6 +24,7 @@ class Renderer:
 
         # OpenGL context
         self.ctx = moderngl.create_context()
+        self.ctx.enable_direct(GL_PROGRAM_POINT_SIZE)
 
         self._load_programs()
         self._load_camera_buffer()
@@ -40,6 +42,7 @@ class Renderer:
         solid_fragment_shader = read_file(SOLID_FRAGMENT_SHADER)
         vector_geometry_shader = read_file(VECTOR_GEOMETRY_SHADER)
         vector_vertex_shader = read_file(VECTOR_VERTEX_SHADER)
+        point_vertex_shader = read_file(POINT_VERTEX_SHADER)
 
         self.vector_program = self.ctx.program(
             vertex_shader = vector_vertex_shader,
@@ -58,6 +61,11 @@ class Renderer:
             fragment_shader = solid_fragment_shader,
         )
 
+        self.point_program = self.ctx.program(
+                vertex_shader = point_vertex_shader,
+                fragment_shader = solid_fragment_shader,
+                )
+
     def _load_camera_buffer(self):
         # Create the shared camera Uniform Buffer Object
         self.camera_binding = 0
@@ -67,7 +75,8 @@ class Renderer:
         for program in [
                 self.vector_program,
                 self.fill_program,
-                self.screen_program
+                self.screen_program,
+                self.point_program,
                 ]:
             program["Camera"].binding = self.camera_binding
 
@@ -145,12 +154,18 @@ class Renderer:
             self.ctx.line_width = config.COAST_THICKNESS
             self.coastlines_vao.render(mode = moderngl.LINES)
 
-        # Voronoi
+        # Voronoi edges
         if self.show_voronoi and self.voronoi_edge_vao is not None:
             self.vector_program['u_color'].value = config.VORONOI_EDGE_COLOR
             self.vector_program['u_max_arc'].value = config.MAX_VECTOR_ARC
             self.ctx.line_width = config.VORONOI_EDGE_THICKNESS
             self.voronoi_edge_vao.render(mode = moderngl.LINES)
+
+        # Voronoi seeds
+        if self.show_voronoi and self.voronoi_seed_vao is not None:
+            self.point_program['u_color'].value = config.VORONOI_SEED_COLOR
+            self.point_program['u_point_size'].value = config.VORONOI_SEED_SIZE
+            self.voronoi_seed_vao.render(mode = moderngl.POINTS)
 
         # Disable line clipping before calling imgui
         self.ctx.disable_direct(GL_CLIP_DISTANCE0)
@@ -160,7 +175,7 @@ class Renderer:
         if len(seed_vertices):
             self.voronoi_seed_vao = self._get_assets_vao(
                     seed_vertices,
-                    self.vector_program,
+                    self.point_program,
                     )
 
         edge_vertices = world.voronoi.edge_vertices

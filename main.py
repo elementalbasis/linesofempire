@@ -101,7 +101,7 @@ while running:
             #_, renderer.show_ocean = imgui.menu_item(
             #        'Ocean', '', renderer.show_ocean, True
             #        )
-            _, renderer.show_ocean = imgui.menu_item(
+            _, renderer.show_voronoi = imgui.menu_item(
                     'Voronoi', '', renderer.show_voronoi, True
                     )
             imgui.end_menu()
