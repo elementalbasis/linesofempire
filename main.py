@@ -4,6 +4,8 @@ import cartopy.io.shapereader as shpreader
 import math
 import numpy as np
 
+from OpenGL.GL import GL_CLIP_DISTANCE0
+
 # ImGui
 import imgui
 from imgui.integrations.pygame import PygameRenderer
@@ -190,21 +192,71 @@ def max_zoom(width, height):
 
 # Load my custom OpenGL shaders
 
-VERTEX_SHADER_FILENAME = 'vertex_shader.glsl'
-FRAGMENT_SHADER_FILENAME = 'fragment_shader.glsl'
-CIRCLE_VERTEX_SHADER_FILENAME = 'circle_vertex_shader.glsl'
+#VERTEX_SHADER_FILENAME = 'vertex_shader.glsl'
+#FRAGMENT_SHADER_FILENAME = 'fragment_shader.glsl'
+#CIRCLE_VERTEX_SHADER_FILENAME = 'circle_vertex_shader.glsl'
+#HORIZON_GEOMETRY_SHADER_FILENAME = 'horizon_geometry_shader.glsl'
+GLOBE_VERTEX_SHADER = 'shaders/globe.vert'
+HORIZON_GEOMETRY_SHADER = 'shaders/horizon.geom'
+DISK_VERTEX_SHADER = 'shaders/disk.vert'
+SOLID_FRAGMENT_SHADER = 'shaders/solid.frag'
 
+'''
 with open(VERTEX_SHADER_FILENAME) as f:
     vertex_shader = f.read()
 with open(FRAGMENT_SHADER_FILENAME) as f:
     fragment_shader = f.read()
 with open(CIRCLE_VERTEX_SHADER_FILENAME) as f:
     circle_vertex_shader = f.read()
+with open(HORIZON_GEOMETRY_SHADER_FILENAME) as f:
+    horizon_geometry_shader = f.read()
+'''
 
+with open(GLOBE_VERTEX_SHADER) as f:
+    globe_vertex_shader = f.read()
+with open(HORIZON_GEOMETRY_SHADER) as f:
+    horizon_geometry_shader = f.read()
+with open(DISK_VERTEX_SHADER) as f:
+    disk_vertex_shader = f.read()
+with open(SOLID_FRAGMENT_SHADER) as f:
+    solid_fragment_shader = f.read()
+
+'''
 program = ctx.program(
         vertex_shader = vertex_shader,
         fragment_shader = fragment_shader,
         )
+fill_program = ctx.program(
+        vertex_shader = vertex_shader,
+        geometry_shader = horizon_geometry_shader,
+        fragment_shader = fragment_shader,
+        )
+'''
+
+vector_program = ctx.program(
+    vertex_shader = globe_vertex_shader,
+    fragment_shader = solid_fragment_shader,
+)
+
+fill_program = ctx.program(
+    vertex_shader = globe_vertex_shader,
+    geometry_shader = horizon_geometry_shader,
+    fragment_shader = solid_fragment_shader,
+)
+
+screen_program = ctx.program(
+    vertex_shader = disk_vertex_shader,
+    fragment_shader = solid_fragment_shader,
+)
+
+# Create the shared camera Uniform Buffer Object
+CAMERA_BINDING = 0
+camera_buffer = ctx.buffer(reserve = 64)
+camera_buffer.bind_to_uniform_block(CAMERA_BINDING)
+
+vector_program['Camera'].binding = CAMERA_BINDING
+fill_program['Camera'].binding = CAMERA_BINDING
+screen_program['Camera'].binding = CAMERA_BINDING
 
 
 
@@ -217,16 +269,18 @@ ocean_vertices = np.asarray(
         ocean_vertices,
         dtype = 'f4'
         )
-
+'''
 ocean_program = ctx.program(
         vertex_shader = circle_vertex_shader,
         fragment_shader = fragment_shader,
         )
+'''
 ocean_buffer = ctx.buffer(
         ocean_vertices.tobytes()
         )
 ocean_vao = ctx.simple_vertex_array(
-        ocean_program,
+        #ocean_program,
+        screen_program,
         ocean_buffer,
         'in_pos',
         )
@@ -256,7 +310,8 @@ coast_buffer = ctx.buffer(
 
 # Load the coastline buffer into a vertex array
 coast_vao = ctx.simple_vertex_array(
-        program,
+        #program,
+        vector_program,
         coast_buffer,
         'in_pos',
         )
@@ -286,7 +341,8 @@ land_buffer = ctx.buffer(
 
 # Load the land buffer into a vertex array
 land_vao = ctx.simple_vertex_array(
-        program,
+        #program,
+        fill_program,
         land_buffer,
         'in_pos',
         )
@@ -312,7 +368,8 @@ lake_buffer = ctx.buffer(
         lake_vertices.tobytes()
         )
 lake_vao = ctx.simple_vertex_array(
-        program,
+        #program,
+        fill_program,
         lake_buffer,
         'in_pos',
         )
@@ -338,7 +395,8 @@ river_buffer = ctx.buffer(
         river_vertices.tobytes()
         )
 river_vao = ctx.simple_vertex_array(
-        program,
+        #program,
+        vector_program,
         river_buffer,
         'in_pos'
         )
@@ -362,7 +420,8 @@ border_buffer = ctx.buffer(
         border_vertices.tobytes()
         )
 border_vao = ctx.simple_vertex_array(
-        program,
+        #program,
+        vector_program,
         border_buffer,
         'in_pos',
         )
@@ -438,15 +497,6 @@ while running:
         # This occurs if the user clicks X to close the window.
         if event.type == pygame.QUIT:
             running = False
-        '''
-        if event.type == pygame.VIDEORESIZE:
-            surface = pygame.display.set_mode((event.w, event.h),
-                                              pygame.RESIZABLE)
-        '''
-    # fill the screen with a color to wipe away anything from last frame
-    #screen.fill('purple')
-
-
 
     # Handle the menu bar
     renderer.process_inputs()
@@ -465,51 +515,54 @@ while running:
             imgui.end_menu()
         imgui.end_main_menu_bar()
 
-
-
-
-    # OpenGL owns the buffer, so we clear like this instead.
-    ctx.clear(*OUTSIDE_COLOR)
-
     # Define the camera basis and pass it to the shaders
     east, north, forward = camera_basis(center_lon, center_lat)
-    program['u_east'].value = east
-    program['u_north'].value = north
-    program['u_forward'].value = forward
-    program['u_viewport'].value = (float(width), float(height))
-    program['u_zoom'].value = zoom
+    camera_data = np.array([
+        *east, 0.0,
+        *north, 0.0,
+        *forward, 0.0,
+        float(width), float(height), zoom, 0.0,
+        ], dtype = 'f4')
+    camera_buffer.write(camera_data.tobytes())
+
+    # Clear the screen
+    ctx.clear(*OUTSIDE_COLOR)
 
     # Ocean
-    ocean_program['u_viewport'].value = (float(width), float(height))
-    ocean_program['u_zoom'].value = zoom
-    ocean_program['u_color'].value = OCEAN_COLOR
+    screen_program['u_color'].value = OCEAN_COLOR
     ocean_vao.render(mode = moderngl.TRIANGLE_FAN)
 
     # Land
-    program['u_color'].value = LAND_COLOR
+    fill_program['u_color'].value = LAND_COLOR
     land_vao.render(mode = moderngl.TRIANGLES)
 
     # Lakes
     if show_lakes:
-        program['u_color'].value = OCEAN_COLOR
+        fill_program['u_color'].value = OCEAN_COLOR
         lake_vao.render(mode = moderngl.TRIANGLES)
+
+    # Enable line clipping
+    ctx.enable_direct(GL_CLIP_DISTANCE0)
 
     # Rivers
     if show_rivers:
-        program['u_color'].value = OCEAN_COLOR
+        vector_program['u_color'].value = OCEAN_COLOR
         ctx.line_width = RIVER_THICKNESS
         river_vao.render(mode = moderngl.LINES)
 
     # Borders
     if show_borders:
-        program['u_color'].value = BORDER_COLOR
+        vector_program['u_color'].value = BORDER_COLOR
         ctx.line_width = BORDER_THICKNESS
         border_vao.render(mode = moderngl.LINES)
 
     # Coastlines
-    program['u_color'].value = COAST_COLOR
+    vector_program['u_color'].value = COAST_COLOR
     ctx.line_width = COAST_THICKNESS
     coast_vao.render(mode = moderngl.LINES)
+
+    # Disable line clipping before calling imgui
+    ctx.disable_direct(GL_CLIP_DISTANCE0)
 
     # Render the top menu on top of the world
     imgui.render()
