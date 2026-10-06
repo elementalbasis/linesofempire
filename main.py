@@ -9,7 +9,6 @@ import imgui
 from imgui.integrations.pygame import PygameRenderer
 from imgui.integrations.opengl import ProgrammablePipelineRenderer
 
-import matplotlib.pyplot as plt
 from matplotlib.colors import to_rgb
 
 # This is needed to convert QGIS data into a list of points
@@ -24,7 +23,8 @@ INITIAL_LON = 15.0
 INITIAL_LAT = 50.0
 INITIAL_ZOOM = 300.0
 CAMERA_SPEED = 60.0 # degrees per second
-SPEED_MULTIPLIER = 3.0
+FAST_SPEED_MULTIPLIER = 3.0
+SLOW_SPEED_MULTIPLIER = 0.25
 ZOOM_SPEED = 1.5
 MIN_ZOOM_MULTIPLIER = 0.35
 MAX_ZOOM_MULTIPLIER = 8
@@ -401,22 +401,27 @@ while running:
 
     # Handle camera movement
     dt = clock.tick(60) / 1000.0
-    speed = CAMERA_SPEED
+    camera_speed = CAMERA_SPEED
+    zoom_speed = ZOOM_SPEED
     keys = pygame.key.get_pressed()
     if keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]:
-        speed *= SPEED_MULTIPLIER
+        camera_speed *= FAST_SPEED_MULTIPLIER
+        zoom_speed *= FAST_SPEED_MULTIPLIER
+    if keys[pygame.K_SPACE]:
+        camera_speed *= SLOW_SPEED_MULTIPLIER
+        zoom_speed *= SLOW_SPEED_MULTIPLIER
     if keys[pygame.K_w]:
-        center_lat += speed * dt
+        center_lat += camera_speed * dt
     if keys[pygame.K_s]:
-        center_lat -= speed * dt
+        center_lat -= camera_speed * dt
     if keys[pygame.K_a]:
-        center_lon -= speed * dt
+        center_lon -= camera_speed * dt
     if keys[pygame.K_d]:
-        center_lon += speed * dt
+        center_lon += camera_speed * dt
     if keys[pygame.K_e]:
-        zoom *= math.exp(ZOOM_SPEED * dt)
+        zoom *= math.exp(zoom_speed * dt)
     if keys[pygame.K_q]:
-        zoom *= math.exp(-ZOOM_SPEED * dt)
+        zoom *= math.exp(-zoom_speed * dt)
 
     # Constrain the coordinates
     center_lat = max(-90.0, min(90.0, center_lat))
@@ -523,7 +528,7 @@ while running:
     # one that the program actually writes to.
     pygame.display.flip()
 
-    clock.tick(60) # limits FPS to 60
+    #clock.tick(60) # limits FPS to 60
 
 renderer.shutdown()
 pygame.quit()
