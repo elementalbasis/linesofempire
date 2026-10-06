@@ -68,3 +68,103 @@ regions. But the regions in European War 3 are irregular in shape, and often
 times anchor their borders on geographic features such as rivers or coastlines.
 Therefore, the algorithm for generating regions must have some knowledge of
 geographic or political features on the map.
+
+
+
+## Core economy
+
+The economy is intentionally simplified into four universal resources:
+
+- **Food:** sustains populations and armies
+- **Materials:** physical inputs for construction, equipment, and warfare
+- **Wealth:** money, liquidity, taxation, commerce, purchasing power
+- **Industry:** productive capacity, workshops, factories, shipyards,
+infrastructure, etc.
+
+These remain meaningful across all historical eras.
+
+
+
+## Strategic Resources
+
+Specific commodities are modeled as **strategic resources**, not additional
+currencies.
+
+Examples include:
+- Horses
+- Iron
+- Coal
+- Oil
+- Uranium
+- Rare earths
+
+Technology determines which strategic resources matter. A resource may
+physically exist on the map long before it becomes strategically important.
+
+Strategic resources primarily provide **access conditions** rather than
+stockpiles:
+
+> None → Limited → Sufficient → Surplus
+
+For example, an oil shortage might reduce mechanized movement, air
+operations, and industrial efficiency without introducing a separate `Oil`
+currency.
+
+
+A country can obtain a strategic resource through domestic production or trade
+access. Therefore, a state does not need to conquer every resource it requires.
+This creates strategic dependencies: an industrial power may depend on foreign
+oil, uranium, or rare-earth supplies.
+
+## Trade
+
+Trade is deliberately abstract.
+
+- **Open trade:** normal commercial access
+- **Limited trade:** reduced access due to sanctions, tariffs, poor relations,
+etc.
+- **Embargo:** deliberate cutoff of trade
+- **Blockaded:** trade relationships may exist, but military control prevents
+goods from reaching the country
+
+This distinction allows both economic warfare and geographic warfare to matter
+without simulating individual shipments.
+
+
+
+## Cards
+
+Cards represent major strategic interventions rather than routine economic management.
+
+Examples:
+
+- **Oil Embargo**
+- **Strategic Reserve**
+- **Synthetic Fuel**
+- **Resource Agreement**
+- **Lend-Lease**
+- **Naval Blockade**
+- **Break the Blockade**
+- **Export Controls**
+- **Close the Straits**
+- **Strategic Bombing**
+
+Cards should generally require appropriate world conditions. For example, an
+**Oil Embargo** should only be available if the player actually supplies
+meaningful oil to the target.
+
+
+
+## Design Philosophy
+
+Lines of Empire should model strategy, not tedious details of administration.
+
+The player should decide:
+- Which territories are worth fighting over?
+- Which resources must be secured?
+- Which trade routes must remain open?
+- Which countries are dangerous dependencies?
+- When is an embargo or blockade worth using?
+
+They should **not** need to manage barrels of oil, tons of coal, freight
+contracts, or individual commodity markets.
