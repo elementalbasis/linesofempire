@@ -14,6 +14,9 @@ class Renderer:
         self.show_lakes = True
         self.show_rivers = True
         self.show_borders = True
+        self.show_land = True
+        self.show_ocean = True
+        self.show_coastlines = True
 
         # OpenGL context
         self.ctx = moderngl.create_context()
@@ -97,12 +100,14 @@ class Renderer:
         self.ctx.clear(*config.OUTSIDE_COLOR)
 
         # Ocean
-        self.screen_program['u_color'].value = config.OCEAN_COLOR
-        self.ocean_vao.render(mode = moderngl.TRIANGLE_FAN)
+        if self.show_ocean:
+            self.screen_program['u_color'].value = config.OCEAN_COLOR
+            self.ocean_vao.render(mode = moderngl.TRIANGLE_FAN)
 
         # Land
-        self.fill_program['u_color'].value = config.LAND_COLOR
-        self.land_vao.render(mode = moderngl.TRIANGLES)
+        if self.show_land:
+            self.fill_program['u_color'].value = config.LAND_COLOR
+            self.land_vao.render(mode = moderngl.TRIANGLES)
 
         # Lakes
         if self.show_lakes:
@@ -125,9 +130,10 @@ class Renderer:
             self.borders_vao.render(mode = moderngl.LINES)
 
         # Coastlines
-        self.vector_program['u_color'].value = config.COAST_COLOR
-        self.ctx.line_width = config.COAST_THICKNESS
-        self.coastlines_vao.render(mode = moderngl.LINES)
+        if self.show_coastlines:
+            self.vector_program['u_color'].value = config.COAST_COLOR
+            self.ctx.line_width = config.COAST_THICKNESS
+            self.coastlines_vao.render(mode = moderngl.LINES)
 
         # Disable line clipping before calling imgui
         self.ctx.disable_direct(GL_CLIP_DISTANCE0)

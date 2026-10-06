@@ -79,6 +79,15 @@ while running:
             _, renderer.show_borders = imgui.menu_item(
                     'Borders', '', renderer.show_borders, True
                     )
+            #_, renderer.show_land = imgui.menu_item(
+            #        'Land', '', renderer.show_land, True
+            #        )
+            _, renderer.show_coastlines = imgui.menu_item(
+                    'Coastlines', '', renderer.show_coastlines, True
+                    )
+            #_, renderer.show_ocean = imgui.menu_item(
+            #        'Ocean', '', renderer.show_ocean, True
+            #        )
             imgui.end_menu()
         imgui.end_main_menu_bar()
 
