@@ -18,41 +18,18 @@ from shapely import get_parts, constrained_delaunay_triangles
 
 
 
-# Parameters
-GAME_TITLE = 'Lines of Empire'
-MAP_SCALE = '50m' # Options are: 10m, 50m, 110m
-INITIAL_LON = 15.0
-INITIAL_LAT = 50.0
-INITIAL_ZOOM = 300.0
-CAMERA_SPEED = 60.0 # degrees per second
-FAST_SPEED_MULTIPLIER = 3.0
-SLOW_SPEED_MULTIPLIER = 0.25
-ZOOM_SPEED = 1.5
-MIN_ZOOM_MULTIPLIER = 0.35
-MAX_ZOOM_MULTIPLIER = 8
+# Import this project's files
+import config
 
-# Map colors and styling
-LAND_COLOR = to_rgb('#d8c99b')
-OCEAN_COLOR = to_rgb('#557c7a')
-COAST_COLOR = to_rgb('#282620')
-OUTSIDE_COLOR = to_rgb('#18191b')
-BORDER_COLOR = to_rgb('#635441')
-COAST_THICKNESS = 2.0
-RIVER_THICKNESS = 1.25
-BORDER_THICKNESS = 1.0
-#PROVINCE_THICKNESS = 0.75
-HORIZON_THICKNESS = 2.0
-OCEAN_SEGMENTS = 256
+# These global variables will change when user presses a key.
+center_lon = config.INITIAL_LON
+center_lat = config.INITIAL_LAT
+zoom = config.INITIAL_ZOOM
 
 # Bools for whether to show various features
 show_lakes = True
 show_rivers = True
 show_borders = True
-
-# These global variables will change when user presses a key.
-center_lon = INITIAL_LON
-center_lat = INITIAL_LAT
-zoom = INITIAL_ZOOM
 
 
 
@@ -64,7 +41,7 @@ screen = pygame.display.set_mode(
         # front buffer is displayed to the user, and the back buffer is the one
         # that the program actually writes to. This is standard practice.
         pygame.RESIZABLE | pygame.OPENGL | pygame.DOUBLEBUF)
-pygame.display.set_caption(GAME_TITLE)
+pygame.display.set_caption(config.GAME_TITLE)
 clock = pygame.time.Clock()
 running = True
 
@@ -88,7 +65,7 @@ io.display_size = pygame.display.get_window_size()
 
 # Get Natural Earth assets
 land_filename = shpreader.natural_earth(
-        resolution = MAP_SCALE,
+        resolution = config.MAP_SCALE,
         category = 'physical',
         name = 'land',
         )
@@ -96,7 +73,7 @@ land = list(
         shpreader.Reader(land_filename).geometries()
         )
 lakes_filename = shpreader.natural_earth(
-        resolution = MAP_SCALE,
+        resolution = config.MAP_SCALE,
         category = 'physical',
         name = 'lakes',
         )
@@ -104,7 +81,7 @@ lakes = list(
         shpreader.Reader(lakes_filename).geometries()
         )
 coastlines_filename = shpreader.natural_earth(
-        resolution = MAP_SCALE,
+        resolution = config.MAP_SCALE,
         category = 'physical',
         name = 'coastline',
         )
@@ -112,7 +89,7 @@ coastlines = list(
         shpreader.Reader(coastlines_filename).geometries()
         )
 rivers_filename = shpreader.natural_earth(
-        resolution = MAP_SCALE,
+        resolution = config.MAP_SCALE,
         category = 'physical',
         name = 'rivers_lake_centerlines',
         )
@@ -120,23 +97,14 @@ rivers = list(
         shpreader.Reader(rivers_filename).geometries()
         )
 borders_filename = shpreader.natural_earth(
-        resolution = MAP_SCALE,
+        resolution = config.MAP_SCALE,
         category = 'cultural',
         name = 'admin_0_boundary_lines_land',
         )
 borders = list(
         shpreader.Reader(borders_filename).geometries()
         )
-'''
-provinces_filename = shpreader.natural_earth(
-        resolution = MAP_SCALE,
-        category = 'cultural',
-        name = 'admin_1_boundary_lines_land',
-        )
-provinces = list(
-        shpreader.Reader(provinces_filename).geometries()
-        )
-'''
+
 
 
 # Helper function for coordinate transform
@@ -183,55 +151,23 @@ def camera_basis(lon, lat):
 # Helper functions for zoom
 
 def min_zoom(width, height):
-    return MIN_ZOOM_MULTIPLIER * min(width, height)
+    return config.MIN_ZOOM_MULTIPLIER * min(width, height)
 
 def max_zoom(width, height):
-    return MAX_ZOOM_MULTIPLIER * min(width, height)
+    return config.MAX_ZOOM_MULTIPLIER * min(width, height)
 
 
 
 # Load my custom OpenGL shaders
 
-#VERTEX_SHADER_FILENAME = 'vertex_shader.glsl'
-#FRAGMENT_SHADER_FILENAME = 'fragment_shader.glsl'
-#CIRCLE_VERTEX_SHADER_FILENAME = 'circle_vertex_shader.glsl'
-#HORIZON_GEOMETRY_SHADER_FILENAME = 'horizon_geometry_shader.glsl'
-GLOBE_VERTEX_SHADER = 'shaders/globe.vert'
-HORIZON_GEOMETRY_SHADER = 'shaders/horizon.geom'
-DISK_VERTEX_SHADER = 'shaders/disk.vert'
-SOLID_FRAGMENT_SHADER = 'shaders/solid.frag'
-
-'''
-with open(VERTEX_SHADER_FILENAME) as f:
-    vertex_shader = f.read()
-with open(FRAGMENT_SHADER_FILENAME) as f:
-    fragment_shader = f.read()
-with open(CIRCLE_VERTEX_SHADER_FILENAME) as f:
-    circle_vertex_shader = f.read()
-with open(HORIZON_GEOMETRY_SHADER_FILENAME) as f:
-    horizon_geometry_shader = f.read()
-'''
-
-with open(GLOBE_VERTEX_SHADER) as f:
+with open(config.GLOBE_VERTEX_SHADER) as f:
     globe_vertex_shader = f.read()
-with open(HORIZON_GEOMETRY_SHADER) as f:
+with open(config.HORIZON_GEOMETRY_SHADER) as f:
     horizon_geometry_shader = f.read()
-with open(DISK_VERTEX_SHADER) as f:
+with open(config.DISK_VERTEX_SHADER) as f:
     disk_vertex_shader = f.read()
-with open(SOLID_FRAGMENT_SHADER) as f:
+with open(config.SOLID_FRAGMENT_SHADER) as f:
     solid_fragment_shader = f.read()
-
-'''
-program = ctx.program(
-        vertex_shader = vertex_shader,
-        fragment_shader = fragment_shader,
-        )
-fill_program = ctx.program(
-        vertex_shader = vertex_shader,
-        geometry_shader = horizon_geometry_shader,
-        fragment_shader = fragment_shader,
-        )
-'''
 
 vector_program = ctx.program(
     vertex_shader = globe_vertex_shader,
@@ -262,29 +198,21 @@ screen_program['Camera'].binding = CAMERA_BINDING
 
 # Create ocean disk out of triangles
 ocean_vertices = [(0.0, 0.0)] # Start with the origin
-for i in range(OCEAN_SEGMENTS + 1):
-    angle = 2 * math.pi * i / OCEAN_SEGMENTS
+for i in range(config.OCEAN_SEGMENTS + 1):
+    angle = 2 * math.pi * i / config.OCEAN_SEGMENTS
     ocean_vertices.append((math.cos(angle), math.sin(angle)))
 ocean_vertices = np.asarray(
         ocean_vertices,
         dtype = 'f4'
         )
-'''
-ocean_program = ctx.program(
-        vertex_shader = circle_vertex_shader,
-        fragment_shader = fragment_shader,
-        )
-'''
 ocean_buffer = ctx.buffer(
         ocean_vertices.tobytes()
         )
 ocean_vao = ctx.simple_vertex_array(
-        #ocean_program,
         screen_program,
         ocean_buffer,
         'in_pos',
         )
-
 
 
 
@@ -428,31 +356,6 @@ border_vao = ctx.simple_vertex_array(
 
 
 
-# Load province borders
-'''
-province_vertices = []
-for geom in provinces:
-    for line in get_parts(geom):
-        coords = list(line.coords)
-        xyz = [lonlat_to_xyz(lon, lat) for lon, lat in coords]
-        for a, b in zip(xyz[:-1], xyz[1:]):
-            province_vertices.append(a)
-            province_vertices.append(b)
-province_vertices = np.asarray(
-        province_vertices,
-        dtype = 'f4'
-        )
-province_buffer = ctx.buffer(
-        province_vertices.tobytes()
-        )
-province_vao = ctx.simple_vertex_array(
-        program,
-        province_buffer,
-        'in_pos',
-        )
-'''
-
-
 # Game loop
 while running:
     # Get window size
@@ -460,15 +363,15 @@ while running:
 
     # Handle camera movement
     dt = clock.tick(60) / 1000.0
-    camera_speed = CAMERA_SPEED
-    zoom_speed = ZOOM_SPEED
+    camera_speed = config.CAMERA_SPEED
+    zoom_speed = config.ZOOM_SPEED
     keys = pygame.key.get_pressed()
     if keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]:
-        camera_speed *= FAST_SPEED_MULTIPLIER
-        zoom_speed *= FAST_SPEED_MULTIPLIER
+        camera_speed *= config.FAST_SPEED_MULTIPLIER
+        zoom_speed *= config.FAST_SPEED_MULTIPLIER
     if keys[pygame.K_SPACE]:
-        camera_speed *= SLOW_SPEED_MULTIPLIER
-        zoom_speed *= SLOW_SPEED_MULTIPLIER
+        camera_speed *= config.SLOW_SPEED_MULTIPLIER
+        zoom_speed *= config.SLOW_SPEED_MULTIPLIER
     if keys[pygame.K_w]:
         center_lat += camera_speed * dt
     if keys[pygame.K_s]:
@@ -526,19 +429,19 @@ while running:
     camera_buffer.write(camera_data.tobytes())
 
     # Clear the screen
-    ctx.clear(*OUTSIDE_COLOR)
+    ctx.clear(*config.OUTSIDE_COLOR)
 
     # Ocean
-    screen_program['u_color'].value = OCEAN_COLOR
+    screen_program['u_color'].value = config.OCEAN_COLOR
     ocean_vao.render(mode = moderngl.TRIANGLE_FAN)
 
     # Land
-    fill_program['u_color'].value = LAND_COLOR
+    fill_program['u_color'].value = config.LAND_COLOR
     land_vao.render(mode = moderngl.TRIANGLES)
 
     # Lakes
     if show_lakes:
-        fill_program['u_color'].value = OCEAN_COLOR
+        fill_program['u_color'].value = config.OCEAN_COLOR
         lake_vao.render(mode = moderngl.TRIANGLES)
 
     # Enable line clipping
@@ -546,19 +449,19 @@ while running:
 
     # Rivers
     if show_rivers:
-        vector_program['u_color'].value = OCEAN_COLOR
-        ctx.line_width = RIVER_THICKNESS
+        vector_program['u_color'].value = config.OCEAN_COLOR
+        ctx.line_width = config.RIVER_THICKNESS
         river_vao.render(mode = moderngl.LINES)
 
     # Borders
     if show_borders:
-        vector_program['u_color'].value = BORDER_COLOR
-        ctx.line_width = BORDER_THICKNESS
+        vector_program['u_color'].value = config.BORDER_COLOR
+        ctx.line_width = config.BORDER_THICKNESS
         border_vao.render(mode = moderngl.LINES)
 
     # Coastlines
-    vector_program['u_color'].value = COAST_COLOR
-    ctx.line_width = COAST_THICKNESS
+    vector_program['u_color'].value = config.COAST_COLOR
+    ctx.line_width = config.COAST_THICKNESS
     coast_vao.render(mode = moderngl.LINES)
 
     # Disable line clipping before calling imgui
