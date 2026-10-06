@@ -13,9 +13,9 @@ class Voronoi:
         if len(self.seeds) < 4:
             return
 
-        points = np.asarray([
+        points = np.asarray(list(set(
             lonlat_to_xyz(lon, lat) for lon, lat in self.seeds
-            ])
+            )))
 
         print(points)
         sv = SphericalVoronoi(points)
