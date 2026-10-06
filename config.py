@@ -3,6 +3,9 @@ from matplotlib.colors import to_rgb
 # Parameters
 GAME_TITLE = 'Lines of Empire'
 
+INITIAL_SCREEN_WIDTH = 1280
+INITIAL_SCREEN_HEIGHT = 720
+
 MAP_SCALE = '50m' # Options are: 10m, 50m, 110m, from Natural Earth
 
 INITIAL_LON = 15.0
@@ -32,9 +35,4 @@ HORIZON_THICKNESS = 2.0
 
 OCEAN_SEGMENTS = 256
 
-
-GLOBE_VERTEX_SHADER = 'shaders/globe.vert'
-HORIZON_GEOMETRY_SHADER = 'shaders/horizon.geom'
-DISK_VERTEX_SHADER = 'shaders/disk.vert'
-SOLID_FRAGMENT_SHADER = 'shaders/solid.frag'
 

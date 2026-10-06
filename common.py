@@ -19,3 +19,8 @@ def lonlat_to_xyz(lon, lat):
     z = math.sin(lat)
 
     return (x, y, z)
+
+def read_file(filename):
+    with open(filename) as f:
+        content = f.read()
+    return content
