@@ -52,15 +52,15 @@ class World:
                 'admin_0_boundary_lines_land',
                 )
 
-        self.load_ocean_vertices()
-        self.load_land_vertices()
-        self.load_rivers_vertices()
-        self.load_lakes_vertices()
-        self.load_borders_vertices()
-        self.load_coastlines_vertices()
+        self._load_ocean_vertices()
+        self._load_land_vertices()
+        self._load_rivers_vertices()
+        self._load_lakes_vertices()
+        self._load_borders_vertices()
+        self._load_coastlines_vertices()
 
     # Create ocean disk out of triangles
-    def load_ocean_vertices(self):
+    def _load_ocean_vertices(self):
         ocean_vertices = [(0.0, 0.0)] # Start with the origin
         for i in range(config.OCEAN_SEGMENTS + 1):
             angle = 2 * math.pi * i / config.OCEAN_SEGMENTS
@@ -70,7 +70,7 @@ class World:
                 dtype = 'f4'
                 )
 
-    def load_coastlines_vertices(self):
+    def _load_coastlines_vertices(self):
         coastlines_vertices = []
         for geom in self.coastlines_asset:
             #for line in line_parts(geom):
@@ -86,7 +86,7 @@ class World:
                 dtype = 'f4',
                 )
 
-    def load_land_vertices(self):
+    def _load_land_vertices(self):
         # Load land polygons
         land_vertices = []
         for geom in self.land_asset:
@@ -105,7 +105,7 @@ class World:
                 dtype = 'f4',
                 )
 
-    def load_lakes_vertices(self):
+    def _load_lakes_vertices(self):
         # Load lake polygons
         lakes_vertices = []
         for geom in self.lakes_asset:
@@ -122,7 +122,7 @@ class World:
                 dtype = 'f4',
                 )
 
-    def load_rivers_vertices(self):
+    def _load_rivers_vertices(self):
         # Load river lines
         rivers_vertices = []
         for geom in self.rivers_asset:
@@ -139,7 +139,7 @@ class World:
                 dtype = 'f4'
                 )
 
-    def load_borders_vertices(self):
+    def _load_borders_vertices(self):
         # Load international borders
         borders_vertices = []
         for geom in self.borders_asset:
