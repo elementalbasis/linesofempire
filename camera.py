@@ -1,29 +1,15 @@
 import pygame
-import config
 import math
 import numpy as np
+
+import config
+from common import min_zoom, max_zoom
 
 class Camera:
     def __init__(self):
         self.lon = config.INITIAL_LON
         self.lat = config.INITIAL_LAT
         self.zoom = config.INITIAL_ZOOM
-
-    def min_zoom(width, height):
-        return config.MIN_ZOOM_MULTIPLIER * min(width, height)
-
-    def max_zoom(width, height):
-        return config.MAX_ZOOM_MULTIPLIER * min(width, height)
-
-    def lonlat_to_xyz(lon, lat):
-        lon = math.radians(lon)
-        lat = math.radians(lat)
-
-        x = math.cos(lat) * math.cos(lon)
-        y = math.cos(lat) * math.sin(lon)
-        z = math.sin(lat)
-
-        return (x, y, z)
 
     def update(self, dt, width, height):
         camera_speed = config.CAMERA_SPEED
@@ -54,7 +40,7 @@ class Camera:
         self.lon = (self.lon + 180.0) % 360.0 - 180.0
 
         # Constrain zoom
-        self.zoom = max(Camera.min_zoom(width, height), min(Camera.max_zoom(width, height), self.zoom))
+        self.zoom = max(min_zoom(width, height), min(max_zoom(width, height), self.zoom))
 
 
 

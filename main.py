@@ -21,6 +21,7 @@ from shapely import get_parts, constrained_delaunay_triangles
 # Import this project's files
 import config
 from camera import Camera
+from world import World
 
 
 
@@ -43,8 +44,9 @@ pygame.display.set_caption(config.GAME_TITLE)
 clock = pygame.time.Clock()
 running = True
 
-# Initialize camera
+# Initialize camera and world
 camera = Camera()
+world = World()
 
 # OpenGL context
 ctx = moderngl.create_context()
@@ -62,47 +64,6 @@ io.display_size = pygame.display.get_window_size()
 
 
 
-# Get Natural Earth assets
-land_filename = shpreader.natural_earth(
-        resolution = config.MAP_SCALE,
-        category = 'physical',
-        name = 'land',
-        )
-land = list(
-        shpreader.Reader(land_filename).geometries()
-        )
-lakes_filename = shpreader.natural_earth(
-        resolution = config.MAP_SCALE,
-        category = 'physical',
-        name = 'lakes',
-        )
-lakes = list(
-        shpreader.Reader(lakes_filename).geometries()
-        )
-coastlines_filename = shpreader.natural_earth(
-        resolution = config.MAP_SCALE,
-        category = 'physical',
-        name = 'coastline',
-        )
-coastlines = list(
-        shpreader.Reader(coastlines_filename).geometries()
-        )
-rivers_filename = shpreader.natural_earth(
-        resolution = config.MAP_SCALE,
-        category = 'physical',
-        name = 'rivers_lake_centerlines',
-        )
-rivers = list(
-        shpreader.Reader(rivers_filename).geometries()
-        )
-borders_filename = shpreader.natural_earth(
-        resolution = config.MAP_SCALE,
-        category = 'cultural',
-        name = 'admin_0_boundary_lines_land',
-        )
-borders = list(
-        shpreader.Reader(borders_filename).geometries()
-        )
 
 
 
@@ -148,16 +109,8 @@ screen_program['Camera'].binding = CAMERA_BINDING
 
 
 # Create ocean disk out of triangles
-ocean_vertices = [(0.0, 0.0)] # Start with the origin
-for i in range(config.OCEAN_SEGMENTS + 1):
-    angle = 2 * math.pi * i / config.OCEAN_SEGMENTS
-    ocean_vertices.append((math.cos(angle), math.sin(angle)))
-ocean_vertices = np.asarray(
-        ocean_vertices,
-        dtype = 'f4'
-        )
 ocean_buffer = ctx.buffer(
-        ocean_vertices.tobytes()
+        world.ocean_vertices.tobytes()
         )
 ocean_vao = ctx.simple_vertex_array(
         screen_program,
@@ -169,22 +122,8 @@ ocean_vao = ctx.simple_vertex_array(
 
 # Load the coastline data into a buffer
 
-coast_vertices = []
-for geom in coastlines:
-    #for line in line_parts(geom):
-    for line in get_parts(geom):
-        coords = list(line.coords)
-        xyz = [Camera.lonlat_to_xyz(lon, lat) for lon, lat in coords]
-
-        for a, b in zip(xyz[:-1], xyz[1:]):
-            coast_vertices.append(a)
-            coast_vertices.append(b)
-coast_vertices = np.asarray(
-        coast_vertices,
-        dtype = 'f4',
-        )
 coast_buffer = ctx.buffer(
-        coast_vertices.tobytes()
+        world.coastlines_vertices.tobytes()
         )
 
 # Load the coastline buffer into a vertex array
@@ -198,24 +137,8 @@ coast_vao = ctx.simple_vertex_array(
 
 
 # Load land polygons
-land_vertices = []
-for geom in land:
-    for polygon in get_parts(geom):
-        for triangle in get_parts(constrained_delaunay_triangles(polygon)):
-            # These coordinates come in a closed loop, so we must exclude the
-            # last element.
-            coords = list(triangle.exterior.coords)[:-1]
-
-            for lon, lat in coords:
-                land_vertices.append(
-                        Camera.lonlat_to_xyz(lon, lat)
-                        )
-land_vertices = np.asarray(
-        land_vertices,
-        dtype = 'f4',
-        )
 land_buffer = ctx.buffer(
-        land_vertices.tobytes()
+        world.land_vertices.tobytes()
         )
 
 # Load the land buffer into a vertex array
@@ -229,22 +152,8 @@ land_vao = ctx.simple_vertex_array(
 
 
 # Load lake polygons
-lake_vertices = []
-for geom in lakes:
-    for polygon in get_parts(geom):
-        for triangle in get_parts(constrained_delaunay_triangles(polygon)):
-            coords = list(triangle.exterior.coords)[:-1]
-
-            for lon, lat in coords:
-                lake_vertices.append(
-                        Camera.lonlat_to_xyz(lon, lat)
-                        )
-lake_vertices = np.asarray(
-        lake_vertices,
-        dtype = 'f4',
-        )
 lake_buffer = ctx.buffer(
-        lake_vertices.tobytes()
+        world.lakes_vertices.tobytes()
         )
 lake_vao = ctx.simple_vertex_array(
         #program,
@@ -256,22 +165,8 @@ lake_vao = ctx.simple_vertex_array(
 
 
 # Load river lines
-river_vertices = []
-for geom in rivers:
-    for line in get_parts(geom):
-        coords = list(line.coords)
-        xyz = [Camera.lonlat_to_xyz(lon, lat) for lon, lat in coords]
-
-        for a, b in zip(xyz[:-1], xyz[1:]):
-            river_vertices.append(a)
-            river_vertices.append(b)
-
-river_vertices = np.asarray(
-        river_vertices,
-        dtype = 'f4'
-        )
 river_buffer = ctx.buffer(
-        river_vertices.tobytes()
+        world.rivers_vertices.tobytes()
         )
 river_vao = ctx.simple_vertex_array(
         #program,
@@ -283,20 +178,8 @@ river_vao = ctx.simple_vertex_array(
 
 
 # Load international borders
-border_vertices = []
-for geom in borders:
-    for line in get_parts(geom):
-        coords = list(line.coords)
-        xyz = [Camera.lonlat_to_xyz(lon, lat) for lon, lat in coords]
-        for a, b in zip(xyz[:-1], xyz[1:]):
-            border_vertices.append(a)
-            border_vertices.append(b)
-border_vertices = np.asarray(
-        border_vertices,
-        dtype = 'f4'
-        )
 border_buffer = ctx.buffer(
-        border_vertices.tobytes()
+        world.borders_vertices.tobytes()
         )
 border_vao = ctx.simple_vertex_array(
         #program,
