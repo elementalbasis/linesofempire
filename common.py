@@ -20,6 +20,12 @@ def lonlat_to_xyz(lon, lat):
 
     return (x, y, z)
 
+def xyz_to_lonlat(x, y, z):
+    lon = math.degrees(math.atan2(y, x))
+    lat = math.degrees(math.asin(z))
+
+    return (lon, lat)
+
 def read_file(filename):
     with open(filename) as f:
         content = f.read()

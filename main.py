@@ -65,6 +65,19 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
+        # Place Voronoi points
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                point = camera.screen_to_sphere(*event.pos, width, height)
+
+                if point is not None:
+                    world.voronoi.add_seed(point)
+                    renderer.update_voronoi(world)
+
+            elif event.button == 3:
+                # TODO: remove seed
+                pass
+
     # Handle the menu bar
     ui_renderer.process_inputs()
     imgui.new_frame()
@@ -88,6 +101,9 @@ while running:
             #_, renderer.show_ocean = imgui.menu_item(
             #        'Ocean', '', renderer.show_ocean, True
             #        )
+            _, renderer.show_ocean = imgui.menu_item(
+                    'Voronoi', '', renderer.show_voronoi, True
+                    )
             imgui.end_menu()
         imgui.end_main_menu_bar()
 

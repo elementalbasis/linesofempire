@@ -10,6 +10,7 @@ from shapely import get_parts, constrained_delaunay_triangles
 # Import this project's files
 import config
 from common import lonlat_to_xyz
+from voronoi import Voronoi
 
 
 class World:
@@ -58,6 +59,8 @@ class World:
         self._load_lakes_vertices()
         self._load_borders_vertices()
         self._load_coastlines_vertices()
+
+        self.voronoi = Voronoi()
 
     # Create ocean disk out of triangles
     def _load_ocean_vertices(self):

@@ -8,6 +8,8 @@ GLOBE_VERTEX_SHADER = 'shaders/globe.vert'
 HORIZON_GEOMETRY_SHADER = 'shaders/horizon.geom'
 DISK_VERTEX_SHADER = 'shaders/disk.vert'
 SOLID_FRAGMENT_SHADER = 'shaders/solid.frag'
+VECTOR_GEOMETRY_SHADER = 'shaders/vector.geom'
+VECTOR_VERTEX_SHADER = 'shaders/vector.vert'
 
 class Renderer:
     def __init__(self, world):
@@ -17,6 +19,7 @@ class Renderer:
         self.show_land = True
         self.show_ocean = True
         self.show_coastlines = True
+        self.show_voronoi = True
 
         # OpenGL context
         self.ctx = moderngl.create_context()
@@ -25,15 +28,22 @@ class Renderer:
         self._load_camera_buffer()
         self._load_assets_vao(world)
 
+        # Voronoi
+        self.voronoi_seed_vao = None
+        self.voronoi_edge_vao = None
+
     # Load my custom OpenGL shaders
     def _load_programs(self):
         globe_vertex_shader = read_file(GLOBE_VERTEX_SHADER)
         horizon_geometry_shader = read_file(HORIZON_GEOMETRY_SHADER)
         disk_vertex_shader = read_file(DISK_VERTEX_SHADER)
         solid_fragment_shader = read_file(SOLID_FRAGMENT_SHADER)
+        vector_geometry_shader = read_file(VECTOR_GEOMETRY_SHADER)
+        vector_vertex_shader = read_file(VECTOR_VERTEX_SHADER)
 
         self.vector_program = self.ctx.program(
-            vertex_shader = globe_vertex_shader,
+            vertex_shader = vector_vertex_shader,
+            geometry_shader = vector_geometry_shader,
             fragment_shader = solid_fragment_shader,
         )
 
@@ -135,5 +145,27 @@ class Renderer:
             self.ctx.line_width = config.COAST_THICKNESS
             self.coastlines_vao.render(mode = moderngl.LINES)
 
+        # Voronoi
+        if self.show_voronoi and self.voronoi_edge_vao is not None:
+            self.vector_program['u_color'].value = config.VORONOI_EDGE_COLOR
+            self.vector_program['u_max_arc'].value = config.MAX_VECTOR_ARC
+            self.ctx.line_width = config.VORONOI_EDGE_THICKNESS
+            self.voronoi_edge_vao.render(mode = moderngl.LINES)
+
         # Disable line clipping before calling imgui
         self.ctx.disable_direct(GL_CLIP_DISTANCE0)
+
+    def update_voronoi(self, world):
+        seed_vertices = world.voronoi.seed_vertices
+        if len(seed_vertices):
+            self.voronoi_seed_vao = self._get_assets_vao(
+                    seed_vertices,
+                    self.vector_program,
+                    )
+
+        edge_vertices = world.voronoi.edge_vertices
+        if len(edge_vertices):
+            self.voronoi_edge_vao = self._get_assets_vao(
+                    edge_vertices,
+                    self.vector_program,
+                    )

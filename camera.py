@@ -48,26 +48,26 @@ class Camera:
         lon = math.radians(self.lon)
         lat = math.radians(self.lat)
 
-        forward = (
+        forward = np.array([
                 math.cos(lat) * math.cos(lon),
                 math.cos(lat) * math.sin(lon),
                 math.sin(lat),
-                )
+                ])
 
-        east = (
+        east = np.array([
                 #- math.sin(lon),
                 #- math.cos(lon),
                 - math.sin(lon),
                 math.cos(lon),
                 0.0,
-                )
+                ])
 
-        north = (
+        north = np.array([
                 - math.sin(lat) * math.cos(lon),
                 - math.sin(lat) * math.sin(lon),
                 math.cos(lat),
                 #math.sin(lat),
-                )
+                ])
 
         return east, north, forward
 
@@ -83,3 +83,20 @@ class Camera:
     def write_to_buffer(self, camera_buffer, width, height):
         data = self.get_data(width, height)
         camera_buffer.write(data.tobytes())
+
+    def screen_to_sphere(self, screen_x, screen_y, width, height):
+        x = (screen_x - width / 2) / self.zoom
+        y = - (screen_y - height / 2) / self.zoom
+
+        r_squared = x**2 + y**2
+        if r_squared > 1.0:
+            return None
+
+        z = math.sqrt(1 - r_squared)
+
+        east, north, forward = self.basis()
+
+        point = east * x + north * y + forward * z
+        point /= np.linalg.norm(point)
+
+        return point
