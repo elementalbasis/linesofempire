@@ -20,11 +20,9 @@ from shapely import get_parts, constrained_delaunay_triangles
 
 # Import this project's files
 import config
+from camera import Camera
 
-# These global variables will change when user presses a key.
-center_lon = config.INITIAL_LON
-center_lat = config.INITIAL_LAT
-zoom = config.INITIAL_ZOOM
+
 
 # Bools for whether to show various features
 show_lakes = True
@@ -45,7 +43,8 @@ pygame.display.set_caption(config.GAME_TITLE)
 clock = pygame.time.Clock()
 running = True
 
-
+# Initialize camera
+camera = Camera()
 
 # OpenGL context
 ctx = moderngl.create_context()
@@ -107,54 +106,6 @@ borders = list(
 
 
 
-# Helper function for coordinate transform
-def lonlat_to_xyz(lon, lat):
-    lon = math.radians(lon)
-    lat = math.radians(lat)
-
-    x = math.cos(lat) * math.cos(lon)
-    y = math.cos(lat) * math.sin(lon)
-    z = math.sin(lat)
-
-    return (x, y, z)
-
-# Helper function for the camera basis
-def camera_basis(lon, lat):
-    lon = math.radians(lon)
-    lat = math.radians(lat)
-
-    forward = (
-            math.cos(lat) * math.cos(lon),
-            math.cos(lat) * math.sin(lon),
-            math.sin(lat),
-            )
-
-    east = (
-            #- math.sin(lon),
-            #- math.cos(lon),
-            - math.sin(lon),
-            math.cos(lon),
-            0.0,
-            )
-
-    north = (
-            - math.sin(lat) * math.cos(lon),
-            - math.sin(lat) * math.sin(lon),
-            math.cos(lat),
-            #math.sin(lat),
-            )
-
-    return east, north, forward
-
-
-
-# Helper functions for zoom
-
-def min_zoom(width, height):
-    return config.MIN_ZOOM_MULTIPLIER * min(width, height)
-
-def max_zoom(width, height):
-    return config.MAX_ZOOM_MULTIPLIER * min(width, height)
 
 
 
@@ -223,7 +174,7 @@ for geom in coastlines:
     #for line in line_parts(geom):
     for line in get_parts(geom):
         coords = list(line.coords)
-        xyz = [lonlat_to_xyz(lon, lat) for lon, lat in coords]
+        xyz = [Camera.lonlat_to_xyz(lon, lat) for lon, lat in coords]
 
         for a, b in zip(xyz[:-1], xyz[1:]):
             coast_vertices.append(a)
@@ -257,7 +208,7 @@ for geom in land:
 
             for lon, lat in coords:
                 land_vertices.append(
-                        lonlat_to_xyz(lon, lat)
+                        Camera.lonlat_to_xyz(lon, lat)
                         )
 land_vertices = np.asarray(
         land_vertices,
@@ -286,7 +237,7 @@ for geom in lakes:
 
             for lon, lat in coords:
                 lake_vertices.append(
-                        lonlat_to_xyz(lon, lat)
+                        Camera.lonlat_to_xyz(lon, lat)
                         )
 lake_vertices = np.asarray(
         lake_vertices,
@@ -309,7 +260,7 @@ river_vertices = []
 for geom in rivers:
     for line in get_parts(geom):
         coords = list(line.coords)
-        xyz = [lonlat_to_xyz(lon, lat) for lon, lat in coords]
+        xyz = [Camera.lonlat_to_xyz(lon, lat) for lon, lat in coords]
 
         for a, b in zip(xyz[:-1], xyz[1:]):
             river_vertices.append(a)
@@ -336,7 +287,7 @@ border_vertices = []
 for geom in borders:
     for line in get_parts(geom):
         coords = list(line.coords)
-        xyz = [lonlat_to_xyz(lon, lat) for lon, lat in coords]
+        xyz = [Camera.lonlat_to_xyz(lon, lat) for lon, lat in coords]
         for a, b in zip(xyz[:-1], xyz[1:]):
             border_vertices.append(a)
             border_vertices.append(b)
@@ -363,34 +314,7 @@ while running:
 
     # Handle camera movement
     dt = clock.tick(60) / 1000.0
-    camera_speed = config.CAMERA_SPEED
-    zoom_speed = config.ZOOM_SPEED
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]:
-        camera_speed *= config.FAST_SPEED_MULTIPLIER
-        zoom_speed *= config.FAST_SPEED_MULTIPLIER
-    if keys[pygame.K_SPACE]:
-        camera_speed *= config.SLOW_SPEED_MULTIPLIER
-        zoom_speed *= config.SLOW_SPEED_MULTIPLIER
-    if keys[pygame.K_w]:
-        center_lat += camera_speed * dt
-    if keys[pygame.K_s]:
-        center_lat -= camera_speed * dt
-    if keys[pygame.K_a]:
-        center_lon -= camera_speed * dt
-    if keys[pygame.K_d]:
-        center_lon += camera_speed * dt
-    if keys[pygame.K_e]:
-        zoom *= math.exp(zoom_speed * dt)
-    if keys[pygame.K_q]:
-        zoom *= math.exp(-zoom_speed * dt)
-
-    # Constrain the coordinates
-    center_lat = max(-90.0, min(90.0, center_lat))
-    center_lon = (center_lon + 180.0) % 360.0 - 180.0
-
-    # Constrain zoom
-    zoom = max(min_zoom(width, height), min(max_zoom(width, height), zoom))
+    camera.update(dt, width, height)
 
     # Handle events
     for event in pygame.event.get():
@@ -418,15 +342,8 @@ while running:
             imgui.end_menu()
         imgui.end_main_menu_bar()
 
-    # Define the camera basis and pass it to the shaders
-    east, north, forward = camera_basis(center_lon, center_lat)
-    camera_data = np.array([
-        *east, 0.0,
-        *north, 0.0,
-        *forward, 0.0,
-        float(width), float(height), zoom, 0.0,
-        ], dtype = 'f4')
-    camera_buffer.write(camera_data.tobytes())
+    # Write camera data to buffer
+    camera.write_to_buffer(camera_buffer, width, height)
 
     # Clear the screen
     ctx.clear(*config.OUTSIDE_COLOR)
