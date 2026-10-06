@@ -71,13 +71,13 @@ while running:
     if imgui.begin_main_menu_bar():
         if imgui.begin_menu('View', True):
             _, renderer.show_lakes = imgui.menu_item(
-                    'Lakes', '', show_lakes, True
+                    'Lakes', '', renderer.show_lakes, True
                     )
             _, renderer.show_rivers = imgui.menu_item(
-                    'Rivers', '', show_rivers, True
+                    'Rivers', '', renderer.show_rivers, True
                     )
             _, renderer.show_borders = imgui.menu_item(
-                    'Borders', '', show_borders, True
+                    'Borders', '', renderer.show_borders, True
                     )
             imgui.end_menu()
         imgui.end_main_menu_bar()
