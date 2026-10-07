@@ -1,4 +1,5 @@
 import math
+import numpy as np
 
 import config
 
@@ -30,3 +31,29 @@ def read_file(filename):
     with open(filename) as f:
         content = f.read()
     return content
+
+def tangent_basis(lon, lat):
+    lon = math.radians(lon)
+    lat = math.radians(lat)
+    forward = np.array([
+            math.cos(lat) * math.cos(lon),
+            math.cos(lat) * math.sin(lon),
+            math.sin(lat),
+            ])
+
+    east = np.array([
+            #- math.sin(lon),
+            #- math.cos(lon),
+            - math.sin(lon),
+            math.cos(lon),
+            0.0,
+            ])
+
+    north = np.array([
+            - math.sin(lat) * math.cos(lon),
+            - math.sin(lat) * math.sin(lon),
+            math.cos(lat),
+            #math.sin(lat),
+            ])
+
+    return east, north, forward

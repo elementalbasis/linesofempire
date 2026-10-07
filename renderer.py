@@ -1,8 +1,11 @@
+import math
+import numpy as np
 import moderngl
 from OpenGL.GL import GL_CLIP_DISTANCE0, GL_PROGRAM_POINT_SIZE
+from PIL import Image
 
 import config
-from common import read_file
+from common import read_file, tangent_basis
 
 GLOBE_VERTEX_SHADER = 'shaders/globe.vert'
 HORIZON_GEOMETRY_SHADER = 'shaders/horizon.geom'
@@ -11,6 +14,12 @@ SOLID_FRAGMENT_SHADER = 'shaders/solid.frag'
 VECTOR_GEOMETRY_SHADER = 'shaders/vector.geom'
 VECTOR_VERTEX_SHADER = 'shaders/vector.vert'
 POINT_VERTEX_SHADER = 'shaders/point.vert'
+CITY_VERTEX_SHADER = 'shaders/city.vert'
+CITY_FRAGMENT_SHADER = 'shaders/city.frag'
+
+MINOR_CITY_TEXTURE = 'assets/circle.png'
+MAJOR_CITY_TEXTURE = 'assets/circle_dot.png'
+CAPITAL_CITY_TEXTURE = 'assets/circle_star.png'
 
 class Renderer:
     def __init__(self, world):
@@ -21,6 +30,7 @@ class Renderer:
         self.show_ocean = True
         self.show_coastlines = True
         self.show_voronoi = True
+        self.show_cities = True
 
         # OpenGL context
         self.ctx = moderngl.create_context()
@@ -34,6 +44,11 @@ class Renderer:
         self.voronoi_seed_vao = None
         self.voronoi_edge_vao = None
 
+        # Cities
+        self.minor_city_texture = self._load_texture(MINOR_CITY_TEXTURE)
+        self.major_city_texture = self._load_texture(MAJOR_CITY_TEXTURE)
+        self.capital_city_texture = self._load_texture(CAPITAL_CITY_TEXTURE)
+
     # Load my custom OpenGL shaders
     def _load_programs(self):
         globe_vertex_shader = read_file(GLOBE_VERTEX_SHADER)
@@ -43,6 +58,8 @@ class Renderer:
         vector_geometry_shader = read_file(VECTOR_GEOMETRY_SHADER)
         vector_vertex_shader = read_file(VECTOR_VERTEX_SHADER)
         point_vertex_shader = read_file(POINT_VERTEX_SHADER)
+        city_vertex_shader = read_file(CITY_VERTEX_SHADER)
+        city_fragment_shader = read_file(CITY_FRAGMENT_SHADER)
 
         self.vector_program = self.ctx.program(
             vertex_shader = vector_vertex_shader,
@@ -66,6 +83,11 @@ class Renderer:
                 fragment_shader = solid_fragment_shader,
                 )
 
+        self.city_program = self.ctx.program(
+                vertex_shader = city_vertex_shader,
+                fragment_shader = city_fragment_shader,
+                )
+
     def _load_camera_buffer(self):
         # Create the shared camera Uniform Buffer Object
         self.camera_binding = 0
@@ -77,6 +99,7 @@ class Renderer:
                 self.fill_program,
                 self.screen_program,
                 self.point_program,
+                self.city_program,
                 ]:
             program["Camera"].binding = self.camera_binding
 
@@ -110,6 +133,24 @@ class Renderer:
                 world.borders_vertices,
                 self.vector_program
                 )
+
+        self.cities = []
+        for index, row in world.cities_df.iterrows():
+            lon = row['Lon']
+            lat = row['Lat']
+            city_vertices = Renderer.city_quad(
+                    lon, lat, config.CITY_SYMBOL_RADIUS)
+            buffer = self.ctx.buffer(city_vertices.tobytes())
+            city_vao = self.ctx.vertex_array(
+                self.city_program,
+                [(
+                    buffer,
+                    '3f 2f',
+                    'in_pos',
+                    'in_uv',
+                )],
+            )
+            self.cities.append((city_vao, row['Symbol']))
 
     def render(self, camera, width, height):
         # Write camera data to buffer
@@ -154,6 +195,23 @@ class Renderer:
             self.ctx.line_width = config.COAST_THICKNESS
             self.coastlines_vao.render(mode = moderngl.LINES)
 
+        # Cities
+        if self.show_cities:
+            for city_vao, symbol in self.cities:
+                self.ctx.enable(moderngl.BLEND)
+                self.ctx.blend_func = (
+                        moderngl.SRC_ALPHA,
+                        moderngl.ONE_MINUS_SRC_ALPHA,
+                        )
+                texture = {
+                        'circle+star': self.capital_city_texture,
+                        'circle+dot': self.major_city_texture,
+                        'circle': self.minor_city_texture,
+                        }[symbol]
+                texture.use(location = 0)
+                self.city_program['u_texture'].value = 0
+                city_vao.render(mode = moderngl.TRIANGLES)
+
         # Voronoi edges
         if self.show_voronoi and self.voronoi_edge_vao is not None:
             self.vector_program['u_color'].value = config.VORONOI_EDGE_COLOR
@@ -184,3 +242,39 @@ class Renderer:
                     edge_vertices,
                     self.vector_program,
                     )
+
+    def _load_texture(self, filename):
+        image = Image.open(filename).convert('RGBA')
+
+        # OpenGL's texture origin is opposite Pillow's
+        image = image.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+
+        texture = self.ctx.texture(image.size, 4, image.tobytes())
+        texture.build_mipmaps()
+
+        texture.filter = (moderngl.LINEAR_MIPMAP_LINEAR, moderngl.LINEAR)
+
+        return texture
+
+    def city_quad(lon, lat, radius):
+        east, north, center = tangent_basis(lon, lat)
+        def point(x, y):
+            p = (
+                center
+                + math.tan(radius) * x * east
+                + math.tan(radius) * y * north
+            )
+            return p / np.linalg.norm(p)
+        bl = point(-1, -1)
+        br = point(+1, -1)
+        tl = point(-1, +1)
+        tr = point(+1, +1)
+        return np.asarray([
+            # xyz, uv
+            *bl, 0.0, 0.0,
+            *br, 1.0, 0.0,
+            *tr, 1.0, 1.0,
+            *bl, 0.0, 0.0,
+            *tr, 1.0, 1.0,
+            *tl, 0.0, 1.0,
+            ], dtype='f4')

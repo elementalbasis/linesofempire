@@ -47,6 +47,8 @@ io.display_size = pygame.display.get_window_size()
 
 
 
+
+
 # Game loop
 while running:
     # Get window size
@@ -103,6 +105,9 @@ while running:
             #        )
             _, renderer.show_voronoi = imgui.menu_item(
                     'Voronoi', '', renderer.show_voronoi, True
+                    )
+            _, renderer.show_cities = imgui.menu_item(
+                    'Cities', '', renderer.show_cities, True
                     )
             imgui.end_menu()
         imgui.end_main_menu_bar()

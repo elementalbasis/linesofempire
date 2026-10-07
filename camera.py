@@ -3,7 +3,7 @@ import math
 import numpy as np
 
 import config
-from common import min_zoom, max_zoom
+from common import min_zoom, max_zoom, tangent_basis
 
 class Camera:
     def __init__(self):
@@ -42,34 +42,8 @@ class Camera:
         # Constrain zoom
         self.zoom = max(min_zoom(width, height), min(max_zoom(width, height), self.zoom))
 
-
-
     def basis(self):
-        lon = math.radians(self.lon)
-        lat = math.radians(self.lat)
-
-        forward = np.array([
-                math.cos(lat) * math.cos(lon),
-                math.cos(lat) * math.sin(lon),
-                math.sin(lat),
-                ])
-
-        east = np.array([
-                #- math.sin(lon),
-                #- math.cos(lon),
-                - math.sin(lon),
-                math.cos(lon),
-                0.0,
-                ])
-
-        north = np.array([
-                - math.sin(lat) * math.cos(lon),
-                - math.sin(lat) * math.sin(lon),
-                math.cos(lat),
-                #math.sin(lat),
-                ])
-
-        return east, north, forward
+        return tangent_basis(self.lon, self.lat)
 
     def get_data(self, width, height):
         east, north, forward = self.basis()

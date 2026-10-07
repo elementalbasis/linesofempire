@@ -1,6 +1,7 @@
 import cartopy.io.shapereader as shpreader
 import math
 import numpy as np
+import pandas as pd
 
 # This is needed to convert QGIS data into a list of points
 from shapely import get_parts, constrained_delaunay_triangles
@@ -11,6 +12,8 @@ from shapely import get_parts, constrained_delaunay_triangles
 import config
 from common import lonlat_to_xyz
 from voronoi import Voronoi
+
+CITIES_FILENAME = 'misc/cities.tsv'
 
 
 class World:
@@ -61,6 +64,8 @@ class World:
         self._load_coastlines_vertices()
 
         self.voronoi = Voronoi()
+
+        self.cities_df = pd.read_csv(CITIES_FILENAME, sep = '\t')
 
     # Create ocean disk out of triangles
     def _load_ocean_vertices(self):

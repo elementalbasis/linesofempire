@@ -10,6 +10,7 @@ reader = shpreader.Reader(filename)
 
 #df = pd.DataFrame(record.attributes for record in reader.records())
 
+print('Name', 'Symbol', 'Lat', 'Lon', sep = '\t')
 for record in reader.records():
     name = record.attributes['NAME']
     #population = record.attributes['POP_MAX']
@@ -17,6 +18,7 @@ for record in reader.records():
     featurecla = record.attributes['FEATURECLA']
     lon = record.attributes['LONGITUDE']
     lat = record.attributes['LATITUDE']
+
 
     if scalerank <= 1:
         if featurecla == 'Admin-0 capital':
@@ -30,6 +32,8 @@ for record in reader.records():
             symbol = 'circle+dot'
         else:
             symbol = 'circle'
+    elif scalerank == 4:
+        symbol = 'circle'
     elif name == 'Kyoto':
         symbol = 'circle+dot'
     else:
@@ -37,9 +41,9 @@ for record in reader.records():
 
     '''
     if scalerank <= 1 and featurecla == 'Admin-0 capital':
-        symbol = 'circle_star'
+        symbol = 'circle+star'
     elif scalerank <= 3:
-        symbol = 'circle_dot'
+        symbol = 'circle+dot'
     elif scalerank <= 5:
         symbol = 'circle'
     else:
