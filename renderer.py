@@ -45,7 +45,10 @@ class Renderer:
         self.voronoi_edge_vao = None
 
         self.world = world
-        self.region_vaos = []
+        #self.region_vaos = []
+        self.highlight_region = None
+        self.highlight_buffer = None
+        self.highlight_vao = None
 
         # Cities
         self.minor_city_texture = self._load_texture(MINOR_CITY_TEXTURE)
@@ -174,13 +177,12 @@ class Renderer:
             self.fill_program['u_color'].value = config.LAND_COLOR
             self.land_vao.render(mode = moderngl.TRIANGLES)
 
-        # Selected region
+        # Highlighted region
         region = self.world.hovered_region
-        if region is not None:
-            vao = self.region_vaos[region.id]
-            if vao is not None:
-                self.fill_program['u_color'].value = config.REGION_HOVER_COLOR
-                vao.render(mode = moderngl.TRIANGLES)
+        self.update_highlight(region)
+        if self.highlight_vao is not None:
+            self.fill_program['u_color'].value = config.REGION_HOVER_COLOR
+            self.highlight_vao.render(mode = moderngl.TRIANGLES)
 
         # Lakes
         if self.show_lakes:
@@ -292,6 +294,7 @@ class Renderer:
             *tl, 0.0, 1.0,
             ], dtype='f4')
 
+    '''
     def update_regions(self, world):
         for vao in self.region_vaos:
             if vao is not None:
@@ -308,3 +311,40 @@ class Renderer:
                 vao = None
 
             self.region_vaos.append(vao)
+    '''
+
+    def update_highlight(self, region):
+        # Nothing changed.
+        if region is self.highlight_region:
+            return
+
+        # Release old GPU objects.
+        if self.highlight_vao is not None:
+            self.highlight_vao.release()
+            self.highlight_vao = None
+
+        if self.highlight_buffer is not None:
+            self.highlight_buffer.release()
+            self.highlight_buffer = None
+
+        self.highlight_region = region
+
+        if region is None:
+            return
+
+        # THIS is when triangulation happens.
+        vertices = region.vertices
+
+        if not len(vertices):
+            return
+
+        self.highlight_buffer = self.ctx.buffer(
+            vertices.tobytes()
+        )
+
+        self.highlight_vao = self.ctx.simple_vertex_array(
+            self.fill_program,
+            self.highlight_buffer,
+            'in_pos',
+        )
+

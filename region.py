@@ -43,7 +43,14 @@ class Region:
                 )
         self._interior_winding = self._winding(self.center)
 
-        self.vertices = self._triangulate()
+        #self.vertices = self._triangulate()
+        self._vertices = None
+
+    @property
+    def vertices(self):
+        if self._vertices is None:
+            self._vertices = self._triangulate()
+        return self._vertices
 
     def _winding(self, p):
         p = np.asarray(
@@ -85,7 +92,7 @@ class Region:
                         center,
                         self.boundary[i],
                         self.boundary[(i + 1) % len(self.boundary)],
-                        limit = config.MAX_VECTOR_ARC,
+                        limit = config.MAX_TRIANGLE_ARC,
                         )
                     )
                 #center,

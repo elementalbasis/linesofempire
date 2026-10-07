@@ -78,7 +78,7 @@ while running:
                 if point is not None:
                     world.add_voronoi_seed(point)
                     renderer.update_voronoi(world)
-                    renderer.update_regions(world)
+                    #renderer.update_regions(world)
 
             elif event.button == 3:
                 # TODO: remove seed
