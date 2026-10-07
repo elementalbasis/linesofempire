@@ -22,8 +22,10 @@ MIN_ZOOM_MULTIPLIER = 0.35
 MAX_ZOOM_MULTIPLIER = 8
 
 # Map colors and styling
-LAND_COLOR = to_rgb('#d8c99b')
-OCEAN_COLOR = to_rgb('#557c7a')
+#LAND_COLOR = to_rgb('#d8c99b')
+LAND_COLOR = to_rgb('#d8c8a8')
+#OCEAN_COLOR = to_rgb('#557c7a')
+OCEAN_COLOR = to_rgb('#588080')
 COAST_COLOR = to_rgb('#282620')
 OUTSIDE_COLOR = to_rgb('#18191b')
 BORDER_COLOR = to_rgb('#635441')
