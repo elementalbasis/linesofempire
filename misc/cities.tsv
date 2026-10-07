@@ -1,22 +1,13 @@
 Name	Symbol	Lat	Lon
 Ankara	circle+star	39.929184	32.862446000000006
 Brasília	circle+star	-15.781394	-47.91799800000001
-Caracas	circle+star	10.502944	-66.918983
 Kyiv	circle+star	50.435313	30.514681999999993
-Tashkent	circle+star	41.313648	69.29298699999998
-Madrid	circle+star	40.401972	-3.685297999999989
-Stockholm	circle+star	59.352706	18.09538900000001
 Bangkok	circle+star	13.751945	100.51469900000001
-Lima	circle+star	-12.046067	-77.052008
-Dakar	circle+star	14.717778	-17.475076
-Amsterdam	circle+star	52.351915	4.914693999999997
 Seoul	circle+star	37.568295	126.99778500000002
 Manila	circle+star	14.606105	120.98027100000002
 Berlin	circle+star	52.523765	13.399603000000013
 Kinshasa	circle+star	-4.327778	15.313026000000008
 New Delhi	circle+star	28.600023	77.19997999999998
-Athens	circle+star	37.985272	23.731375000000014
-Baghdad	circle+star	33.340594	44.39192299999999
 Addis Ababa	circle+star	9.035256	38.698059
 Tehran	circle+star	35.673889	51.42239799999999
 Buenos Aires	circle+star	-34.600556	-58.39947699999999
@@ -30,7 +21,6 @@ Moscow	circle+star	55.75411	37.61357699999999
 Mexico City	circle+star	19.444388	-99.132934
 Rome	circle+star	41.897902	12.481313
 Beijing	circle+star	39.930838	116.38634000000002
-Nairobi	circle+star	-1.281401	36.81471099999999
 Jakarta	circle+star	-6.172472	106.827492
 Bogota	circle+star	4.598369	-74.08529
 Cairo	circle+star	30.051906	31.24802199999999
@@ -38,6 +28,8 @@ Tokyo	circle+star	35.686963	139.749462
 Paris	circle+star	48.868639	2.331389999999999
 Santiago	circle+star	-33.448068	-70.668987
 Singapore	circle+star	1.294979	103.85387500000002
+Athens/Atlanta	circle+dot	33.896629000000004	-83.88995849999999
+Lima	circle+dot	40.742874	-84.105265
 Barcelona	circle+dot	10.130375	-64.720014
 Kyoto/Ōsaka	circle+dot	34.8919595	135.60312550000003
 Hanoi	circle+dot	21.035273	105.84806800000001
@@ -77,16 +69,24 @@ San Francisco	circle+dot	37.769196	-122.417169
 Denver	circle+dot	39.741134	-104.985962
 Houston	circle+dot	29.82192	-95.341925
 Miami	circle+dot	25.789557	-80.226052
-Atlanta	circle+dot	33.83196	-84.401895
 Chicago	circle+dot	41.831937	-87.752001
+Caracas	circle+dot	10.502944	-66.918983
 Dubai	circle+dot	25.231942	55.278029000000004
+Tashkent	circle+dot	41.313648	69.29298699999998
+Madrid	circle+dot	40.401972	-3.685297999999989
 Geneva	circle+dot	46.210008	6.140028000000001
+Stockholm	circle+dot	59.352706	18.09538900000001
+Lima	circle+dot	-12.046067	-77.052008
+Dakar	circle+dot	14.717778	-17.475076
 Johannesburg	circle+dot	-26.168099	28.028064
+Amsterdam	circle+dot	52.351915	4.914693999999997
 Casablanca	circle+dot	33.601922	-7.618313000000001
 Monterrey	circle+dot	25.671941	-100.331931
 Ürümqi	circle+dot	43.806958	87.57306
 Chengdu	circle+dot	30.671946	104.06807400000002
 Bengaluru	circle+dot	12.971941	77.558064
+Athens	circle+dot	37.985272	23.731375000000014
+Baghdad	circle+dot	33.340594	44.39192299999999
 Vancouver	circle+dot	49.275362	-123.12359
 Toronto	circle+dot	43.701926	-79.421967
 Kabul	circle+dot	34.518636	69.18131399999999
@@ -95,6 +95,7 @@ Los Angeles	circle+dot	33.991924	-118.181926
 New York	circle+dot	40.751925	-73.981963
 Istanbul	circle+dot	41.106942	29.00805600000001
 Lagos	circle+dot	6.445208	3.389585000000011
+Nairobi	circle+dot	-1.281401	36.81471099999999
 Shanghai	circle+dot	31.218398	121.43455899999998
 Mumbai	circle+dot	19.018936	72.855043
 Kolkata	circle+dot	22.496915	88.32272999999998

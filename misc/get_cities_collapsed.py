@@ -175,10 +175,16 @@ for record in reader.records():
             #Demote
             'Kabul': 'circle+dot',
             'Johannesburg': 'circle+dot',
-            #'Madrid': 'circle+dot',
-            #'Stockholm': 'circle+dot',
-            #'Amsterdam': 'circle+dot',
-            #'Athens': 'circle+dot',
+            'Madrid': 'circle+dot',
+            'Stockholm': 'circle+dot',
+            'Amsterdam': 'circle+dot',
+            'Athens': 'circle+dot',
+            'Baghdad': 'circle+dot',
+            'Dakar': 'circle+dot',
+            'Tashkent': 'circle+dot',
+            'Caracas': 'circle+dot',
+            'Lima': 'circle+dot',
+            'Nairobi': 'circle+dot',
             }
 
     if name in overrides:
