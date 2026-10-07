@@ -12,6 +12,7 @@ from shapely import get_parts, constrained_delaunay_triangles
 import config
 from common import lonlat_to_xyz
 from voronoi import Voronoi
+from region import Region
 
 CITIES_FILENAME = 'misc/cities.tsv'
 
@@ -64,6 +65,7 @@ class World:
         self._load_coastlines_vertices()
 
         self.voronoi = Voronoi()
+        self.regions = []
 
         self.cities_df = pd.read_csv(CITIES_FILENAME, sep = '\t')
 
@@ -161,3 +163,16 @@ class World:
                 borders_vertices,
                 dtype = 'f4'
                 )
+
+    def _rebuild_regions_from_voronoi(self):
+        self.regions = []
+
+        for region_id, indices in enumerate(self.voronoi.region_indices):
+            boundary = self.voronoi.vertices[indices]
+            self.regions.append(
+                    Region(region_id, boundary)
+                    )
+
+    def add_voronoi_seed(self, point):
+        self.voronoi.add_seed(point)
+        self._rebuild_regions_from_voronoi()

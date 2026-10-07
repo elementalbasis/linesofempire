@@ -73,7 +73,7 @@ while running:
                 point = camera.screen_to_sphere(*event.pos, width, height)
 
                 if point is not None:
-                    world.voronoi.add_seed(point)
+                    world.add_voronoi_seed(point)
                     renderer.update_voronoi(world)
 
             elif event.button == 3:

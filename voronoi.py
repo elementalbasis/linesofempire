@@ -7,7 +7,7 @@ class Voronoi:
     def __init__(self):
         self.seeds = []
         self.vertices = []
-        self.regions = []
+        self.region_indices = []
 
     def rebuild(self):
         if len(self.seeds) < 4:
@@ -22,7 +22,7 @@ class Voronoi:
         sv.sort_vertices_of_regions()
 
         self.vertices = sv.vertices
-        self.regions = sv.regions
+        self.region_indices = sv.regions
 
     def add_seed(self, point):
         lon, lat = xyz_to_lonlat(*point)
@@ -38,13 +38,13 @@ class Voronoi:
 
     @property
     def edge_vertices(self):
-        if not self.regions:
+        if not self.region_indices:
             return np.empty((0, 3), dtype = 'f4')
 
         seen = set()
         vertices = []
 
-        for region in self.regions:
+        for region in self.region_indices:
             for a, b in zip(
                     region,
                     region[1:] + region[:1],
