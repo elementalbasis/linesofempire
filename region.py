@@ -38,7 +38,35 @@ class Region:
             self._next_boundary,
         )
 
+        self.center = normalize(
+                self.boundary.mean(axis = 0)
+                )
+        self._interior_winding = self._winding(self.center)
+
         self.vertices = self._triangulate()
+
+    def _winding(self, p):
+        p = np.asarray(
+            p,
+            dtype=np.float64,
+        )
+
+        p /= np.linalg.norm(p)
+
+        ap = self.boundary @ p
+        bp = self._next_boundary @ p
+
+        numerator = self._boundary_cross @ p
+
+        denominator = (
+            self._boundary_dot
+            - ap * bp
+        )
+
+        return np.arctan2(
+            numerator,
+            denominator,
+        ).sum()
 
 
     def _triangulate(self):
@@ -118,6 +146,7 @@ class Region:
         return abs(winding) > math.pi
     '''
 
+    '''
     def contains(self, point):
         p = np.asarray(
             point,
@@ -142,3 +171,11 @@ class Region:
         ).sum()
 
         return abs(winding) > math.pi
+    '''
+    def contains(self, point):
+        winding = self._winding(point)
+
+        return (
+            abs(winding) > math.pi
+            and winding * self._interior_winding > 0
+        )

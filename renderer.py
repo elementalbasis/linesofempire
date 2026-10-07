@@ -156,6 +156,8 @@ class Renderer:
             self.cities.append((city_vao, row['Symbol']))
 
     def render(self, camera, width, height):
+        self.ctx.viewport = (0, 0, width, height)
+
         # Write camera data to buffer
         camera.write_to_buffer(self.camera_buffer, width, height)
 
