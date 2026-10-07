@@ -1,0 +1,524 @@
+Name	Symbol	Lat	Lon
+Kyoto	circle+dot	35.031938	135.748052
+Kozhikode	circle	11.252382	75.768044
+Bhubaneswar	circle	20.272374	85.825415
+Jamshedpur	circle	22.789481	86.195573
+Montevideo	circle+dot	-34.856096	-56.172998
+Helena	circle	46.592749	-112.035291
+Bismarck	circle	46.808317	-100.783316
+Boise	circle	43.60859	-116.22749
+San Jose	circle	37.301929	-121.851935
+Sacramento	circle	38.576967	-121.471984
+Las Vegas	circle	36.211944	-115.221952
+Santa Fe	circle	35.686929	-105.937239
+Portland	circle	45.52197	-122.681936
+Salt Lake City	circle	40.776962	-111.931998
+Cheyenne	circle	41.140007	-104.819711
+Des Moines	circle	41.57998	-93.619981
+Omaha	circle	41.240001	-96.00999
+Oklahoma City	circle	35.471989	-97.520629
+Pierre	circle	44.368337	-100.350552
+San Antonio	circle	29.489279	-98.509251
+San Cristóbal	circle	7.770003	-72.249968
+Valencia	circle	10.231927	-67.981967
+Jackson	circle	32.298815	-90.184997
+Raleigh	circle	35.818781	-78.644693
+Cleveland	circle	41.471933	-81.696944
+Cincinnati	circle	39.163831	-84.458869
+Nashville	circle	36.17192	-86.781931
+Memphis	circle	35.121933	-90.001941
+Norfolk	circle	36.849959	-76.280006
+Milwaukee	circle	43.054601	-87.921913
+Buffalo	circle	42.881924	-78.881948
+Pittsburgh	circle	40.431945	-80.001931
+Ciudad Guayana	circle	8.370018	-62.619987
+Lomé	circle+dot	6.133883	1.220811
+Tunis	circle+dot	36.802778	10.179678
+Kodiak	circle	57.789998	-152.406987
+Cold Bay	circle	55.200001	-162.715092
+Bethel	circle	60.793303	-161.755796
+Point Hope	circle	68.347726	-166.80802
+Utqiaġvik	circle	71.29057	-156.78858
+Nome	circle	64.5061	-165.406374
+Valdez	circle	61.135996	-146.348287
+Juneau	circle	58.314127	-134.419997
+Fairbanks	circle	64.836984	-147.710659
+Prudhoe Bay	circle	70.292181	-148.66936
+Sevastopol	circle	44.599977	33.464975
+Abu Dhabi	circle+dot	24.466684	54.366593
+Ashgabat	circle+dot	37.949995	58.383299
+Samarkand	circle	39.670019	66.944999
+Lusaka	circle+dot	-15.414698	28.281382
+Harare	circle+dot	-17.815844	31.042764
+Bulawayo	circle	-20.169998	28.580002
+Dili	circle+dot	-8.559388	125.579456
+Port Vila	circle+dot	-17.73335	168.316641
+Tegucigalpa	circle+dot	14.103991	-87.219475
+Georgetown	circle+dot	6.801974	-58.167029
+Reykjavík	circle+dot	64.150024	-21.950015
+Port-au-Prince	circle+dot	18.542971	-72.33798
+Glasgow	circle	55.876351	-4.252653
+Kampala	circle+dot	0.318605	32.581378
+Aden	circle	12.779723	45.00949
+Paramaribo	circle+dot	5.83503	-55.167031
+Seville	circle	37.405015	-5.980007
+Zinder	circle	13.799996	8.983317
+Niamey	circle+dot	13.518652	2.11471
+Port Sudan	circle	19.615791	37.216426
+Dushanbe	circle+dot	38.560035	68.773879
+Cusco	circle	-13.525029	-71.972155
+Tacna	circle	-18.000001	-70.250012
+Trujillo	circle	-8.120035	-79.019968
+Ica	circle	-14.067993	-75.725492
+Asunción	circle+dot	-25.294457	-57.643451
+Managua	circle+dot	12.154962	-86.270438
+Freetown	circle+dot	8.471957	-13.236162
+Agadez	circle	16.995873	7.98281
+Nyala	circle	12.059973	24.889995
+Wau	circle	7.699981	27.989961
+Dongola	circle	19.166594	30.483297
+Kassala	circle	15.459972	36.390016
+Tromsø	circle	69.635076	18.992025
+Trondheim	circle	63.416658	10.416666
+Bergen	circle	60.391002	5.324522
+Islamabad	circle+dot	33.701942	73.164689
+Multan	circle	30.201923	71.453062
+Hyderabad	circle	25.381933	68.373043
+Peshawar	circle	34.006962	71.533057
+Kathmandu	circle+dot	27.718638	85.314696
+Nacala	circle	-14.518611	40.715024
+Bloemfontein	circle+dot	-29.119994	26.229913
+Pretoria	circle+dot	-25.704975	28.227483
+Port Moresby	circle+dot	-9.464708	147.192504
+Honiara	circle+dot	-9.437994	159.949766
+Panama City	circle+dot	8.969963	-79.534983
+Fez	circle	34.056546	-5.002323
+Rabat	circle+dot	34.025307	-6.836408
+Marrakesh	circle	31.631939	-8.001933
+Chișinău	circle+dot	47.005024	28.857711
+Beira	circle	-19.820045	34.870006
+Port Elizabeth	circle	-33.968088	25.598083
+Maputo	circle+dot	-25.953332	32.587217
+Tomsk	circle	56.494987	84.975009
+Anadyr	circle	64.73699	177.474996
+Murmansk	circle	68.969988	33.100036
+Archangel	circle	64.574959	40.545008
+Nizhny Novgorod	circle	56.334953	43.998149
+Volgograd	circle	48.711956	44.498015
+Ufa	circle	54.791921	56.038085
+Yekaterinburg	circle	56.851976	60.598014
+Samara	circle	53.196953	50.149349
+Kazan	circle	55.751888	49.124399
+Surgut	circle	61.259942	73.425017
+Barnaul	circle	53.354998	83.745007
+Novosibirsk	circle	55.031906	82.958096
+Mogadishu	circle+dot	2.068627	45.364732
+Muscat	circle+dot	23.613325	58.593312
+Colombo	circle+dot	6.931966	79.857751
+Cebu	circle	10.321922	123.898129
+Iloilo	circle	10.705043	122.545016
+Davao	circle	7.111963	125.62805
+Bratsk	circle	56.156997	101.615027
+Irkutsk	circle	52.319971	104.245048
+Krasnoyarsk	circle	56.015929	92.864055
+Dikson	circle	73.506972	80.545099
+Chita	circle	52.055026	113.465002
+Vladivostok	circle	43.130015	131.910026
+Nizhneyansk	circle	71.433326	136.066619
+Yakutsk	circle	62.034959	129.735016
+Tiksi	circle	71.626886	128.834967
+Magadan	circle	59.57498	150.810009
+Tijuana	circle	32.501963	-117.081942
+Chihuahua	circle	28.646927	-106.086928
+Mazatlán	circle	23.221101	-106.420001
+Tampico	circle	22.30002	-97.870006
+Acapulco	circle	16.849991	-99.915979
+Veracruz	circle	19.177342	-96.159981
+Tuxtla Gutiérrez	circle	16.749997	-93.15001
+Cancún	circle	21.16996	-86.830008
+Mérida	circle	20.968585	-89.618579
+Enugu	circle	6.450031	7.499997
+Sokoto	circle	13.060016	5.240031
+Perm	circle	58.001906	56.248047
+Erdenet	circle	49.053297	104.118337
+Ulaanbaatar	circle+dot	47.918619	106.91467
+Mbeya	circle	-8.890014	33.430042
+Windhoek	circle+dot	-22.570006	17.083546
+Grootfontein	circle	-19.566624	18.116558
+Zanzibar	circle	-6.16	39.200026
+Valencia	circle	39.486963	-0.401958
+Palana	circle	59.084002	159.95002
+Petropavlovsk-Kamchatsky	circle	53.061992	158.62302
+Abuja	circle+dot	9.085279	7.531382
+Padang	circle	-0.958061	100.358068
+Bissau	circle+dot	11.865024	-15.598361
+Palermo	circle	38.126969	13.348081
+Amman	circle+dot	31.951971	35.931354
+Vilnius	circle+dot	54.683366	25.316635
+Riga	circle+dot	56.950024	24.099965
+Bishkek	circle+dot	42.875025	74.583258
+Jiayuguan	circle	39.82001	98.299984
+Xining	circle	36.621945	101.768059
+Guilin	circle	25.281939	110.278082
+Huainan	circle	32.63193	116.978035
+Shantou	circle	23.371952	116.66808
+Tarakan	circle	3.300017	117.633016
+Mombasa	circle	-4.03808	39.687972
+Maseru	circle+dot	-29.316674	27.483273
+Antananarivo	circle+dot	-18.914692	47.514678
+Semarang	circle	-6.964672	110.418074
+Palembang	circle	-2.978093	104.748084
+Bandjarmasin	circle	-3.329992	114.580076
+Makassar	circle	-5.138013	119.430082
+Lyon	circle	45.771954	4.828085
+Quito	circle+dot	-0.213042	-78.501997
+San José	circle+dot	9.936958	-84.085997
+San Salvador	circle+dot	13.711948	-89.204987
+Kingston	circle+dot	17.977077	-76.767434
+Cartagena	circle	10.401684	-75.516339
+Mitú	circle	1.198311	-70.173608
+Bumba	circle	2.189981	22.459962
+N'Djamena	circle+dot	12.115042	15.047203
+Abéché	circle	13.839994	20.829984
+Malabo	circle+dot	3.750015	8.783278
+Luxor	circle	25.700019	32.650038
+Asmara	circle+dot	15.333339	38.933324
+Zagreb	circle+dot	45.800007	15.999995
+Tallinn	circle+dot	59.433877	24.728041
+Lhasa	circle	29.645024	91.10001
+Hami	circle	42.826984	93.515005
+Hotan	circle	37.099711	79.926945
+Kashgar	circle	39.476336	75.969926
+Yinchuan	circle	38.46992	106.271092
+Pingxiang	circle	27.621951	113.848097
+Nagasaki	circle	32.764988	129.885033
+Qiqihar	circle	47.346923	123.988046
+Kikwit	circle	-5.030043	18.850002
+Matadi	circle	-5.81661	13.450021
+Kolwezi	circle	-10.716724	25.47244
+Lubumbashi	circle	-11.678079	27.478072
+Lilongwe	circle+dot	-13.983295	33.783302
+Guatemala City	circle+dot	14.623081	-90.528911
+Cayenne	circle	4.932992	-52.330021
+Libreville	circle+dot	0.385389	9.457965
+Vishakhapatnam	circle	17.731961	83.303036
+Suva	circle+dot	-18.133016	178.441707
+Port-Gentil	circle	-0.720022	8.780022
+Timbuktu	circle	16.766585	-3.016597
+Punta Arenas	circle	-53.164986	-70.939996
+Iquique	circle	-20.249993	-70.129968
+Antofagasta	circle	-23.649992	-70.400003
+Valparaíso	circle	-33.045819	-71.62296
+Valdivia	circle	-39.795001	-73.245023
+Concepción	circle	-36.830014	-73.050022
+Puerto Montt	circle	-41.469989	-72.929978
+Nuuk	circle	64.198282	-51.732659
+Nouakchott	circle+dot	18.086427	-15.97534
+Bamako	circle+dot	12.651961	-8.001985
+Atar	circle	20.51664	-13.049989
+Djenné	circle	13.89999	-4.549991
+Sabha	circle	27.033271	14.43332
+Banghazi	circle	32.118679	20.064777
+Thessaloniki	circle	40.698052	22.883055
+Beirut	circle+dot	33.873921	35.507762
+Tbilisi	circle+dot	41.726956	44.78885
+Gondar	circle	12.610043	37.460028
+Nur-Sultan	circle+dot	51.181125	71.427774
+Qaraghandy	circle	49.884977	73.11501
+Almaty	circle	43.326936	76.91309
+Isfahan	circle	32.701951	51.698092
+Shiraz	circle	29.631906	52.568065
+Amritsar	circle	31.641938	74.868047
+Varanasi	circle	25.331936	82.998094
+Asansol	circle	23.685279	86.981387
+Bhilai	circle	21.218613	81.431387
+Bhopal	circle	23.251934	77.408047
+Madurai	circle	9.921972	78.118081
+Coimbatore	circle	11.001906	76.948075
+Vientiane	circle+dot	17.966693	102.59998
+Brazzaville	circle+dot	-4.25724	15.282744
+Conakry	circle+dot	9.533469	-13.682181
+Yamoussoukro	circle+dot	6.818381	-5.275503
+Cruzeiro do Sul	circle	-7.629988	-72.669968
+Leticia	circle	-4.201207	-69.955261
+Manaus	circle	-3.098086	-60.001963
+Caxias	circle	-4.833001	-43.350026
+Santarém	circle	-2.433251	-54.699979
+Marabá	circle	-5.349972	-49.115979
+Vilhena	circle	-12.716602	-60.1166
+Ji-Paraná	circle	-10.833307	-61.967003
+Campo Grande	circle	-20.448086	-54.618571
+Florianópolis	circle	-27.578039	-48.521966
+Feira de Santana	circle	-12.250016	-38.970009
+Winnipeg	circle	49.882988	-97.165992
+Churchill	circle	58.765985	-94.165994
+Regina	circle	50.450033	-104.61701
+Saskatoon	circle	52.170031	-106.669985
+Calgary	circle	51.084938	-114.081944
+Prince Rupert	circle	54.31667	-130.329988
+Victoria	circle	48.433283	-123.350001
+Arctic Bay	circle	73.033306	-85.166621
+Resolute	circle	74.683334	-94.900006
+Naujaat	circle	66.529467	-86.282935
+Yellowknife	circle	62.442014	-114.396981
+Fort Good Hope	circle	66.266613	-128.633322
+Whitehorse	circle	60.716719	-135.049984
+Boa Vista	circle	2.816093	-60.665998
+Macapá	circle	0.033007	-51.050021
+Ottawa	circle+dot	45.418643	-75.701961
+Fort Severn	circle	55.983339	-87.649984
+Thunder Bay	circle	48.44615	-89.274975
+Québec	circle	46.839969	-71.24561
+Halifax	circle	44.650025	-63.600005
+St. John's	circle	47.584988	-52.681007
+Nain	circle	56.547352	-61.686045
+Charlottetown	circle	46.249282	-63.131325
+N'Délé	circle	8.409137	20.653044
+Belgrade	circle+dot	44.820591	20.466045
+Obo	circle	5.399992	26.500026
+Bandar Seri Begawan	circle+dot	4.883331	114.933284
+Puerto Deseado	circle	-47.75002	-65.899968
+Río Gallegos	circle	-51.633297	-69.216587
+Comodoro Rivadavia	circle	-45.870031	-67.499999
+Mendoza	circle	-32.881384	-68.818557
+Sucre	circle+dot	-19.040971	-65.259516
+Riberalta	circle	-10.983013	-66.100007
+Bahía Blanca	circle	-38.740027	-62.265021
+Mar del Plata	circle	-38.00002	-57.579984
+Córdoba	circle	-31.398012	-64.18424
+Posadas	circle	-27.357832	-55.885107
+Belmopan	circle+dot	17.252034	-88.767073
+Bangui	circle+dot	4.366644	18.558288
+Maroua	circle	10.595566	14.324696
+Yaoundé	circle+dot	3.868647	11.514705
+Tirana	circle+dot	41.327541	19.818883
+Yerevan	circle+dot	40.183097	44.511606
+Baku	circle+dot	40.397218	49.860271
+Kandahar	circle	31.61002	65.694946
+Phnom Penh	circle+dot	11.551976	104.914689
+Menongue	circle	-14.666613	17.699994
+Huambo	circle	-12.74804	15.758064
+La Paz	circle+dot	-16.496028	-68.151931
+Santa Cruz	circle	-17.751972	-63.227942
+Oran	circle	35.711948	-0.621919
+Cotonou	circle+dot	6.401954	2.518045
+Tamanrasset	circle	22.785003	5.522805
+Ghardaia	circle	32.489992	3.669998
+Sofia	circle+dot	42.685295	23.314708
+Minsk	circle+dot	53.901923	27.564681
+Thimphu	circle+dot	27.472986	89.639014
+Gaborone	circle+dot	-24.646314	25.911948
+Darwin	circle	-12.425354	130.850039
+Alice Springs	circle	-23.700997	133.880035
+Canberra	circle+dot	-35.283029	149.129026
+Newcastle	circle	-32.845348	151.815012
+Adelaide	circle	-34.933042	138.598059
+Townsville	circle	-19.24995	146.769997
+Brisbane	circle	-27.453085	153.033147
+Hobart	circle	-42.850009	147.29503
+Ouagadougou	circle+dot	12.372262	-1.52667
+Sarajevo	circle+dot	43.850022	18.383002
+Naypyidaw	circle+dot	19.768503	96.116673
+San Juan	circle	18.440023	-66.129979
+Stanley	circle	-51.700011	-57.849968
+Hamilton	circle	32.29419	-64.783937
+Nuku'alofa	circle+dot	-21.138512	-175.220565
+Hargeisa	circle+dot	9.560022	44.06531
+Victoria	circle+dot	-4.616632	55.44999
+São Tomé	circle+dot	0.333402	6.733325
+Apia	circle+dot	-13.841545	-171.738642
+Valletta	circle+dot	35.899733	14.514711
+Malé	circle+dot	4.166708	73.499948
+Jerusalem	circle+dot	31.778408	35.206626
+Praia	circle+dot	14.916698	-23.516689
+Nassau	circle+dot	25.08339	-77.350044
+Nicosia	circle+dot	35.166677	33.366635
+Kaohsiung	circle	22.633307	120.266602
+Shenzhen	circle+dot	22.554316	114.120177
+Zibo	circle+dot	36.801934	118.048047
+Minneapolis	circle+dot	44.981925	-93.253732
+Honolulu	circle+dot	21.308822	-157.859944
+Seattle	circle+dot	47.571948	-122.341931
+Phoenix	circle+dot	33.541926	-112.071938
+San Diego	circle+dot	32.82197	-117.181936
+St. Louis	circle+dot	38.636964	-90.241926
+New Orleans	circle+dot	29.996948	-90.041913
+Dallas	circle+dot	32.82197	-96.841963
+Maracaibo	circle+dot	10.731923	-71.661924
+Boston	circle+dot	42.331906	-71.07196
+Tampa	circle+dot	27.948934	-82.460567
+Philadelphia	circle+dot	40.001919	-75.171942
+Detroit	circle+dot	42.331906	-83.082002
+Anchorage	circle+dot	61.21997	-149.900215
+Hanoi	circle+dot	21.035273	105.848068
+Ho Chi Minh City	circle+dot	10.781971	106.693081
+Ankara	circle+dot	39.929184	32.862446
+Budapest	circle+dot	47.501952	19.081375
+Sanaa	circle+dot	15.356679	44.204648
+Barcelona	circle+dot	41.385245	2.181425
+Bucharest	circle+dot	44.435318	26.098001
+Aleppo	circle+dot	36.231917	37.168074
+Damascus	circle+dot	33.50198	36.29805
+Zürich	circle+dot	47.381934	8.548064
+Lisbon	circle+dot	38.724669	-9.146812
+Khartoum	circle+dot	15.590024	32.532233
+Jeddah	circle+dot	21.518835	39.217252
+Makkah	circle+dot	21.431967	39.818094
+Oslo	circle+dot	59.918636	10.748033
+Lahore	circle+dot	31.561917	74.348079
+Karachi	circle+dot	24.871938	66.988063
+Durban	circle+dot	-29.863067	30.978065
+St.  Petersburg	circle+dot	59.94096	30.314074
+Guadalajara	circle+dot	20.671962	-103.33198
+Puebla	circle+dot	19.051906	-98.201983
+Kano	circle+dot	12.001923	8.518092
+Warsaw	circle+dot	52.251947	20.998054
+Pyongyang	circle+dot	39.021385	125.752745
+Dar es Salaam	circle+dot	-6.798067	39.266396
+Medan	circle+dot	3.58192	98.648094
+Dublin	circle+dot	53.335007	-6.250852
+Monrovia	circle+dot	6.314582	-10.79966
+Naples	circle+dot	40.841971	14.243066
+Milan	circle+dot	45.471921	9.203063
+Kuala Lumpur	circle+dot	3.168612	101.698037
+Lanzhou	circle+dot	36.057974	103.790054
+Nanning	circle+dot	22.821934	108.318099
+Guiyang	circle+dot	26.581989	106.718093
+Chongqing	circle+dot	29.566923	106.593036
+Fuzhou	circle+dot	26.081942	119.2981
+Guangzhou	circle+dot	23.146927	113.323064
+Dongguan	circle+dot	23.050835	113.742776
+Bandung	circle+dot	-6.948083	107.568067
+Surabaya	circle+dot	-7.24729	112.748887
+Guayaquil	circle+dot	-2.218088	-79.921988
+Medellín	circle+dot	6.276949	-75.576956
+Cali	circle+dot	3.401905	-76.501912
+Havana	circle+dot	23.133905	-82.366128
+Alexandria	circle+dot	31.201965	29.94805
+Frankfurt	circle+dot	50.099977	8.675015
+Hamburg	circle+dot	53.551971	9.998053
+Munich	circle+dot	48.131888	11.573048
+Prague	circle+dot	50.085283	14.464034
+Kuwait City	circle+dot	29.371664	47.976355
+Xian	circle+dot	34.276971	108.89305
+Taiyuan	circle+dot	37.876958	112.543112
+Wuhan	circle+dot	30.581977	114.268071
+Changsha	circle+dot	28.201916	112.968047
+Kunming	circle+dot	25.071926	102.678029
+Zhengzhou	circle+dot	34.756942	113.663147
+Shenyeng	circle+dot	41.806925	123.448028
+Jinan	circle+dot	36.676928	116.993073
+Tianjin	circle+dot	39.131972	117.198073
+Nanchang	circle+dot	28.681938	115.87805
+Nanjing	circle+dot	32.051965	118.778029
+Hangzhou	circle+dot	30.25192	120.168073
+Hiroshima	circle+dot	34.389781	132.440967
+Changchun	circle+dot	43.866954	125.338042
+Baotou	circle+dot	40.654153	109.820074
+Harbin	circle+dot	45.75193	126.648039
+Sapporo	circle+dot	43.076925	141.338099
+Santo Domingo	circle+dot	18.472019	-69.902031
+Accra	circle+dot	5.551981	-0.218662
+Delhi	circle+dot	28.671939	77.228058
+Hyderabad	circle+dot	17.401929	78.478008
+Pune	circle+dot	18.531963	73.848058
+Nagpur	circle+dot	21.171906	79.088048
+Tripoli	circle+dot	32.8925	13.180012
+Tel Aviv	circle+dot	32.081937	34.768066
+Helsinki	circle+dot	60.177509	24.932181
+Mashhad	circle+dot	36.271966	59.568051
+Jaipur	circle+dot	26.923079	75.808042
+Kanpur	circle+dot	26.461945	80.31805
+Patna	circle+dot	25.626905	85.128093
+Chennai	circle+dot	13.091934	80.278053
+Ahmedabad	circle+dot	23.031999	72.578058
+Surat	circle+dot	21.20193	72.838094
+København	circle+dot	55.68051	12.56154
+Abidjan	circle+dot	5.321943	-4.041994
+Belém	circle+dot	-1.448057	-48.481969
+Brasília	circle+dot	-15.781394	-47.917998
+Porto Alegre	circle+dot	-30.048069	-51.201958
+Curitiba	circle+dot	-25.418067	-49.321944
+Fortaleza	circle+dot	-3.748072	-38.581927
+Salvador	circle+dot	-12.968026	-38.481933
+Edmonton	circle+dot	53.551971	-113.501928
+Montréal	circle+dot	45.501945	-73.585243
+Goiânia	circle+dot	-16.718081	-49.301971
+Recife	circle+dot	-8.0737	-34.917551
+Brussels	circle+dot	50.835263	4.331371
+Dhaka	circle+dot	23.725006	90.406634
+Luanda	circle+dot	-8.83634	13.232481
+Algiers	circle+dot	36.765011	3.048607
+Chattogram	circle+dot	22.331938	91.798022
+Perth	circle+dot	-31.953069	115.838053
+Yangon	circle+dot	16.7853	96.164732
+San Francisco	circle+dot	37.769196	-122.417169
+Denver	circle+dot	39.741134	-104.985962
+Houston	circle+dot	29.82192	-95.341925
+Miami	circle+dot	25.789557	-80.226052
+Atlanta	circle+dot	33.83196	-84.401895
+Chicago	circle+dot	41.831937	-87.752001
+Caracas	circle+star	10.502944	-66.918983
+Kyiv	circle+star	50.435313	30.514682
+Dubai	circle+dot	25.231942	55.278029
+Tashkent	circle+star	41.313648	69.292987
+Madrid	circle+star	40.401972	-3.685298
+Geneva	circle+dot	46.210008	6.140028
+Stockholm	circle+star	59.352706	18.095389
+Bangkok	circle+star	13.751945	100.514699
+Lima	circle+star	-12.046067	-77.052008
+Dakar	circle+star	14.717778	-17.475076
+Johannesburg	circle+star	-26.168099	28.028064
+Amsterdam	circle+star	52.351915	4.914694
+Casablanca	circle+dot	33.601922	-7.618313
+Seoul	circle+star	37.568295	126.997785
+Manila	circle+star	14.606105	120.980271
+Monterrey	circle+dot	25.671941	-100.331931
+Berlin	circle+star	52.523765	13.399603
+Ürümqi	circle+dot	43.806958	87.57306
+Chengdu	circle+dot	30.671946	104.068074
+Ōsaka	circle+dot	34.751981	135.458199
+Kinshasa	circle+star	-4.327778	15.313026
+New Delhi	circle+star	28.600023	77.19998
+Bengaluru	circle+dot	12.971941	77.558064
+Athens	circle+star	37.985272	23.731375
+Baghdad	circle+star	33.340594	44.391923
+Addis Ababa	circle+star	9.035256	38.698059
+Tehran	circle+star	35.673889	51.422398
+Vancouver	circle+dot	49.275362	-123.12359
+Toronto	circle+dot	43.701926	-79.421967
+Buenos Aires	circle+star	-34.600556	-58.399477
+Kabul	circle+star	34.518636	69.181314
+Vienna	circle+star	48.201961	16.364693
+Melbourne	circle+dot	-37.818086	144.97307
+Taipei	circle+star	25.035833	121.568333
+Los Angeles	circle+dot	33.991924	-118.181926
+Washington,  D.C.	circle+star	38.901495	-77.011364
+New York	circle+dot	40.751925	-73.981963
+London	circle+star	51.501941	-0.118668
+Istanbul	circle+dot	41.106942	29.008056
+Riyadh	circle+star	24.642779	46.770796
+Cape Town	circle+star	-33.918065	18.433042
+Moscow	circle+star	55.75411	37.613577
+Mexico City	circle+star	19.444388	-99.132934
+Lagos	circle+dot	6.445208	3.389585
+Rome	circle+star	41.897902	12.481313
+Beijing	circle+star	39.930838	116.38634
+Nairobi	circle+star	-1.281401	36.814711
+Jakarta	circle+star	-6.172472	106.827492
+Bogota	circle+star	4.598369	-74.08529
+Cairo	circle+star	30.051906	31.248022
+Shanghai	circle+dot	31.218398	121.434559
+Tokyo	circle+star	35.686963	139.749462
+Mumbai	circle+dot	19.018936	72.855043
+Paris	circle+star	48.868639	2.33139
+Santiago	circle+star	-33.448068	-70.668987
+Kolkata	circle+dot	22.496915	88.32273
+Rio de Janeiro	circle+dot	-22.923077	-43.226967
+São Paulo	circle+dot	-23.556734	-46.626966
+Sydney	circle+dot	-33.918065	151.183234
+Singapore	circle+star	1.294979	103.853875
+Hong Kong	circle+dot	22.306927	114.183064
+Wellington	circle+dot	-41.299988	174.783266
+Christchurch	circle	-43.535022	172.630023
+Auckland	circle+dot	-36.848055	174.763027
