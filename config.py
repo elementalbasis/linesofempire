@@ -22,15 +22,16 @@ MIN_ZOOM_MULTIPLIER = 0.35
 MAX_ZOOM_MULTIPLIER = 8
 
 # Map colors and styling
-#LAND_COLOR = to_rgb('#d8c99b')
-LAND_COLOR = to_rgb('#d8c8a8')
-#OCEAN_COLOR = to_rgb('#557c7a')
-OCEAN_COLOR = to_rgb('#588080')
+LAND_COLOR = to_rgb('#d8c99b')
+#LAND_COLOR = to_rgb('#d8c8a8')
+OCEAN_COLOR = to_rgb('#557c7a')
+#OCEAN_COLOR = to_rgb('#588080')
 COAST_COLOR = to_rgb('#282620')
 OUTSIDE_COLOR = to_rgb('#18191b')
 BORDER_COLOR = to_rgb('#635441')
 VORONOI_EDGE_COLOR = to_rgb('#282828')
 VORONOI_SEED_COLOR = to_rgb('#ff0000')
+REGION_HOVER_COLOR = to_rgb('#eadb9a')
 
 COAST_THICKNESS = 2.0
 RIVER_THICKNESS = 1.25
@@ -43,5 +44,5 @@ VORONOI_SEED_SIZE = 8.0
 CITY_SYMBOL_RADIUS = math.radians(0.2)
 
 OCEAN_SEGMENTS = 256
-MAX_VECTOR_ARC_DEGREES = 2.0
+MAX_VECTOR_ARC_DEGREES = 5.0
 MAX_VECTOR_ARC = math.radians(MAX_VECTOR_ARC_DEGREES)

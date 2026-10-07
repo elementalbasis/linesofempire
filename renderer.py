@@ -44,6 +44,9 @@ class Renderer:
         self.voronoi_seed_vao = None
         self.voronoi_edge_vao = None
 
+        self.world = world
+        self.region_vaos = []
+
         # Cities
         self.minor_city_texture = self._load_texture(MINOR_CITY_TEXTURE)
         self.major_city_texture = self._load_texture(MAJOR_CITY_TEXTURE)
@@ -169,6 +172,14 @@ class Renderer:
             self.fill_program['u_color'].value = config.LAND_COLOR
             self.land_vao.render(mode = moderngl.TRIANGLES)
 
+        # Selected region
+        region = self.world.hovered_region
+        if region is not None:
+            vao = self.region_vaos[region.id]
+            if vao is not None:
+                self.fill_program['u_color'].value = config.REGION_HOVER_COLOR
+                vao.render(mode = moderngl.TRIANGLES)
+
         # Lakes
         if self.show_lakes:
             self.fill_program['u_color'].value = config.OCEAN_COLOR
@@ -278,3 +289,20 @@ class Renderer:
             *tr, 1.0, 1.0,
             *tl, 0.0, 1.0,
             ], dtype='f4')
+
+    def update_regions(self, world):
+        for vao in self.region_vaos:
+            if vao is not None:
+                vao.release()
+
+        self.region_vaos = []
+        for region in world.regions:
+            if len(region.vertices):
+                vao = self._get_assets_vao(
+                        region.vertices,
+                        self.fill_program,
+                        )
+            else:
+                vao = None
+
+            self.region_vaos.append(vao)

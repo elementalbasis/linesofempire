@@ -57,3 +57,76 @@ def tangent_basis(lon, lat):
             ])
 
     return east, north, forward
+
+def normalize(v):
+    a = np.linalg.norm(v)
+    if a == 0:
+        return v * 0
+    else:
+        return v / np.linalg.norm(v)
+
+def angle(a, b):
+    return math.acos(np.clip(np.dot(a, b), -1.0, 1.0))
+
+
+
+def recursively_subdivide_triangle(a, b, c, limit):
+    ab_angle = angle(a, b)
+    bc_angle = angle(b, c)
+    ca_angle = angle(c, a)
+
+    longest = max(
+        ab_angle,
+        bc_angle,
+        ca_angle,
+    )
+
+    # Base case
+    if longest <= limit:
+        return [(a, b, c)]
+
+    # Bisect the longest side.
+    if ab_angle == longest:
+        ab = normalize(a + b)
+
+        return (
+            recursively_subdivide_triangle(
+                a, ab, c,
+                limit,
+            )
+            +
+            recursively_subdivide_triangle(
+                ab, b, c,
+                limit,
+            )
+        )
+
+    elif bc_angle == longest:
+        bc = normalize(b + c)
+
+        return (
+            recursively_subdivide_triangle(
+                a, b, bc,
+                limit,
+            )
+            +
+            recursively_subdivide_triangle(
+                a, bc, c,
+                limit,
+            )
+        )
+
+    else:
+        ca = normalize(c + a)
+
+        return (
+            recursively_subdivide_triangle(
+                a, b, ca,
+                limit,
+            )
+            +
+            recursively_subdivide_triangle(
+                ca, b, c,
+                limit,
+            )
+        )

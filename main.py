@@ -59,6 +59,9 @@ while running:
     camera.update(dt, width, height)
 
     # Handle events
+    mouse = pygame.mouse.get_pos()
+    mouse_pos = camera.screen_to_sphere(*mouse, width, height)
+    world.hovered_region = world.region_at(mouse_pos)
     for event in pygame.event.get():
         # Pass the event to ImGui
         ui_renderer.process_event(event)
@@ -75,6 +78,7 @@ while running:
                 if point is not None:
                     world.add_voronoi_seed(point)
                     renderer.update_voronoi(world)
+                    renderer.update_regions(world)
 
             elif event.button == 3:
                 # TODO: remove seed

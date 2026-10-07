@@ -66,6 +66,7 @@ class World:
 
         self.voronoi = Voronoi()
         self.regions = []
+        self.hovered_region = None
 
         self.cities_df = pd.read_csv(CITIES_FILENAME, sep = '\t')
 
@@ -173,6 +174,18 @@ class World:
                     Region(region_id, boundary)
                     )
 
+        self.hovered_region = None
+
     def add_voronoi_seed(self, point):
         self.voronoi.add_seed(point)
         self._rebuild_regions_from_voronoi()
+
+    def region_at(self, point):
+        if point is None:
+            return None
+
+        for region in self.regions:
+            if region.contains(point):
+                return region
+
+        return None
