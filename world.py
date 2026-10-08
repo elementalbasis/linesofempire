@@ -73,7 +73,7 @@ class World:
 
         self.georasters = [
                 GeoRaster(
-                    'assets/european_theater.tif',
+                    'assets/european_theater.tiff',
                     grid_step = 16,
                     ),
                 ]

@@ -113,6 +113,9 @@ while running:
             _, renderer.show_cities = imgui.menu_item(
                     'Cities', '', renderer.show_cities, True
                     )
+            _, renderer.show_georaster = imgui.menu_item(
+                    'GeoRaster', '', renderer.show_georaster, True
+                    )
             imgui.end_menu()
         imgui.end_main_menu_bar()
 

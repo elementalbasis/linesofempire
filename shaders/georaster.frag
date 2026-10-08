@@ -5,6 +5,7 @@ in vec2 v_uv;
 out vec4 frag_color;
 
 uniform sampler2D u_texture;
+uniform float u_opacity;
 
 void main()
 {
@@ -16,5 +17,5 @@ void main()
 	if (color.a < 0.01)
 		discard;
 
-	frag_color = color;
+	frag_color = vec4(color.rgb, color.a * u_opacity);
 }
