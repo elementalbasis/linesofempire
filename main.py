@@ -46,43 +46,7 @@ io = imgui.get_io()
 io.display_size = pygame.display.get_window_size()
 
 
-
-# Game loop
-while running:
-    # Get window size
-    width, height = pygame.display.get_window_size()
-
-    # Handle camera movement
-    dt = clock.tick(60) / 1000.0
-    camera.update(dt, width, height)
-
-    # Handle events
-    mouse = pygame.mouse.get_pos()
-    mouse_pos = camera.screen_to_sphere(*mouse, width, height)
-    world.hovered_region = world.region_at(mouse_pos)
-    for event in pygame.event.get():
-        # Pass the event to ImGui
-        ui_renderer.process_event(event)
-
-        # This occurs if the user clicks X to close the window.
-        if event.type == pygame.QUIT:
-            running = False
-
-        # Place Voronoi points
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:
-                point = camera.screen_to_sphere(*event.pos, width, height)
-
-                if point is not None:
-                    world.add_voronoi_seed(point)
-                    renderer.update_voronoi(world)
-                    #renderer.update_regions(world)
-
-            elif event.button == 3:
-                # TODO: remove seed
-                pass
-
-    # Handle the menu bar
+def draw_top_menu(renderer, ui_renderer):
     ui_renderer.process_inputs()
     imgui.new_frame()
     if imgui.begin_main_menu_bar():
@@ -113,6 +77,44 @@ while running:
                     )
             imgui.end_menu()
         imgui.end_main_menu_bar()
+
+
+# Game loop
+while running:
+    # Get window size
+    width, height = pygame.display.get_window_size()
+
+    # Handle camera movement
+    dt = clock.tick(60) / 1000.0
+    camera.update(dt, width, height)
+
+    # Handle events
+    mouse = pygame.mouse.get_pos()
+    mouse_pos = camera.screen_to_sphere(*mouse, width, height)
+    world.hovered_region = world.region_at(mouse_pos)
+    for event in pygame.event.get():
+        # Pass the event to ImGui
+        ui_renderer.process_event(event)
+
+        # This occurs if the user clicks X to close the window.
+        if event.type == pygame.QUIT:
+            running = False
+
+        # Place Voronoi points
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                point = camera.screen_to_sphere(*event.pos, width, height)
+
+                if point is not None:
+                    world.add_voronoi_seed(point)
+                    renderer.update_voronoi(world)
+
+            elif event.button == 3:
+                # TODO: remove seed
+                pass
+
+    # Handle the menu bar
+    draw_top_menu(renderer, ui_renderer)
 
     # Render the world
     renderer.render(camera, width, height)

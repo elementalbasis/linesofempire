@@ -2,8 +2,11 @@ import numpy as np
 import math
 
 import config
-from common import normalize, recursively_subdivide_triangle
+from common import normalize, subdivide_spherical_triangle
 
+# A closed polygonal region on the unit sphere.
+# `boundary` is the geometry for containment and topology.
+# `vertices` is a lazily generated triangle mesh used for rendering.
 class Region:
     def __init__(self, region_id, boundary):
         self.id = region_id
@@ -73,13 +76,11 @@ class Region:
         if len(self.boundary) < 3:
             return np.empty((0, 3), dtype = 'f4')
 
-        center = normalize(self.boundary.mean(axis = 0))
-
         triangles = []
         for i in range(len(self.boundary)):
             triangles.extend(
-                    recursively_subdivide_triangle(
-                        center,
+                    subdivide_spherical_triangle(
+                        self.center,
                         self.boundary[i],
                         self.boundary[(i + 1) % len(self.boundary)],
                         limit = config.MAX_TRIANGLE_ARC,

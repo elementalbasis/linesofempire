@@ -3,6 +3,9 @@ from scipy.spatial import SphericalVoronoi
 
 from common import lonlat_to_xyz, xyz_to_lonlat
 
+# Mutable spherical Voronoi generator.
+# Seeds are stored as lonlat.
+# `vertices` and `region_indices` are derived SciPy topology.
 class Voronoi:
     def __init__(self):
         self.seeds = []
@@ -11,13 +14,14 @@ class Voronoi:
 
     def rebuild(self):
         if len(self.seeds) < 4:
+            self.vertices = np.empty((0,3), dtype = 'f8')
+            self.region_indices = []
             return
 
         points = np.asarray(
                 [lonlat_to_xyz(lon, lat) for lon, lat in self.seeds]
                 )
 
-        print(points)
         sv = SphericalVoronoi(points)
         sv.sort_vertices_of_regions()
 

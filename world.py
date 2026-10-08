@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pandas as pd
 
-# This is needed to convert QGIS data into a list of points
+# Shapely helpers for decomposing and triangulating Natural Earth geometry
 from shapely import get_parts, constrained_delaunay_triangles
 
 
@@ -18,51 +18,40 @@ CITIES_FILENAME = 'misc/cities.tsv'
 
 
 class World:
-    def get_asset(resolution, category, name):
-        filename = shpreader.natural_earth(
-                resolution = resolution,
-                category = category,
-                name = name,
-                )
-        asset = list(
-                shpreader.Reader(filename).geometries()
-                )
-        return asset
-
     def __init__(self):
         # Get Natural Earth assets
-        self.land_asset = World.get_asset(
+        land = World._load_natural_earth(
                 config.MAP_SCALE,
                 'physical',
                 'land',
                 )
-        self.lakes_asset = World.get_asset(
+        lakes = World._load_natural_earth(
                 config.MAP_SCALE,
                 'physical',
                 'lakes',
                 )
-        self.rivers_asset = World.get_asset(
+        rivers = World._load_natural_earth(
                 config.MAP_SCALE,
                 'physical',
                 'rivers_lake_centerlines',
                 )
-        self.coastlines_asset = World.get_asset(
+        coastlines = World._load_natural_earth(
                 config.MAP_SCALE,
                 'physical',
                 'coastline',
                 )
-        self.borders_asset = World.get_asset(
+        borders = World._load_natural_earth(
                 config.MAP_SCALE,
                 'cultural',
                 'admin_0_boundary_lines_land',
                 )
 
         self._load_ocean_vertices()
-        self._load_land_vertices()
-        self._load_rivers_vertices()
-        self._load_lakes_vertices()
-        self._load_borders_vertices()
-        self._load_coastlines_vertices()
+        self.land_vertices = self._polygon_vertices(land)
+        self.lakes_vertices = self._polygon_vertices(lakes)
+        self.rivers_vertices = self._line_vertices(rivers)
+        self.coastlines_vertices = self._line_vertices(coastlines)
+        self.borders_vertices = self._line_vertices(borders)
 
         self.voronoi = Voronoi()
         self.regions = []
@@ -78,90 +67,6 @@ class World:
             ocean_vertices.append((math.cos(angle), math.sin(angle)))
         self.ocean_vertices = np.asarray(
                 ocean_vertices,
-                dtype = 'f4'
-                )
-
-    def _load_coastlines_vertices(self):
-        coastlines_vertices = []
-        for geom in self.coastlines_asset:
-            #for line in line_parts(geom):
-            for line in get_parts(geom):
-                coords = list(line.coords)
-                xyz = [lonlat_to_xyz(lon, lat) for lon, lat in coords]
-
-                for a, b in zip(xyz[:-1], xyz[1:]):
-                    coastlines_vertices.append(a)
-                    coastlines_vertices.append(b)
-        self.coastlines_vertices = np.asarray(
-                coastlines_vertices,
-                dtype = 'f4',
-                )
-
-    def _load_land_vertices(self):
-        # Load land polygons
-        land_vertices = []
-        for geom in self.land_asset:
-            for polygon in get_parts(geom):
-                for triangle in get_parts(constrained_delaunay_triangles(polygon)):
-                    # These coordinates come in a closed loop, so we must exclude the
-                    # last element.
-                    coords = list(triangle.exterior.coords)[:-1]
-
-                    for lon, lat in coords:
-                        land_vertices.append(
-                                lonlat_to_xyz(lon, lat)
-                                )
-        self.land_vertices = np.asarray(
-                land_vertices,
-                dtype = 'f4',
-                )
-
-    def _load_lakes_vertices(self):
-        # Load lake polygons
-        lakes_vertices = []
-        for geom in self.lakes_asset:
-            for polygon in get_parts(geom):
-                for triangle in get_parts(constrained_delaunay_triangles(polygon)):
-                    coords = list(triangle.exterior.coords)[:-1]
-
-                    for lon, lat in coords:
-                        lakes_vertices.append(
-                                lonlat_to_xyz(lon, lat)
-                                )
-        self.lakes_vertices = np.asarray(
-                lakes_vertices,
-                dtype = 'f4',
-                )
-
-    def _load_rivers_vertices(self):
-        # Load river lines
-        rivers_vertices = []
-        for geom in self.rivers_asset:
-            for line in get_parts(geom):
-                coords = list(line.coords)
-                xyz = [lonlat_to_xyz(lon, lat) for lon, lat in coords]
-
-                for a, b in zip(xyz[:-1], xyz[1:]):
-                    rivers_vertices.append(a)
-                    rivers_vertices.append(b)
-
-        self.rivers_vertices = np.asarray(
-                rivers_vertices,
-                dtype = 'f4'
-                )
-
-    def _load_borders_vertices(self):
-        # Load international borders
-        borders_vertices = []
-        for geom in self.borders_asset:
-            for line in get_parts(geom):
-                coords = list(line.coords)
-                xyz = [lonlat_to_xyz(lon, lat) for lon, lat in coords]
-                for a, b in zip(xyz[:-1], xyz[1:]):
-                    borders_vertices.append(a)
-                    borders_vertices.append(b)
-        self.borders_vertices = np.asarray(
-                borders_vertices,
                 dtype = 'f4'
                 )
 
@@ -189,3 +94,48 @@ class World:
                 return region
 
         return None
+
+    @staticmethod
+    def _line_vertices(geometries):
+        vertices = []
+
+        for geometry in geometries:
+            for line in get_parts(geometry):
+                points = [
+                    lonlat_to_xyz(lon, lat)
+                    for lon, lat in line.coords
+                ]
+
+                for a, b in zip(points[:-1], points[1:]):
+                    vertices.extend((a, b))
+
+        return np.asarray(vertices, dtype='f4')
+
+
+    @staticmethod
+    def _polygon_vertices(geometries):
+        vertices = []
+
+        for geometry in geometries:
+            for polygon in get_parts(geometry):
+                triangles = constrained_delaunay_triangles(polygon)
+
+                for triangle in get_parts(triangles):
+                    # Shapely exterior rings repeat the first coordinate.
+                    for lon, lat in list(triangle.exterior.coords)[:-1]:
+                        vertices.append(lonlat_to_xyz(lon, lat))
+
+        return np.asarray(vertices, dtype='f4')
+
+    @staticmethod
+    def _load_natural_earth(resolution, category, name):
+        filename = shpreader.natural_earth(
+                resolution = resolution,
+                category = category,
+                name = name,
+                )
+        asset = list(
+                shpreader.Reader(filename).geometries()
+                )
+        return asset
+

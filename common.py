@@ -60,15 +60,15 @@ def normalize(v):
     if a == 0:
         return v * 0
     else:
-        return v / np.linalg.norm(v)
+        return v / a
 
-def angle(a, b):
+def angular_distance(a, b):
     return math.acos(np.clip(np.dot(a, b), -1.0, 1.0))
 
-def recursively_subdivide_triangle(a, b, c, limit):
-    ab_angle = angle(a, b)
-    bc_angle = angle(b, c)
-    ca_angle = angle(c, a)
+def subdivide_spherical_triangle(a, b, c, limit):
+    ab_angle = angular_distance(a, b)
+    bc_angle = angular_distance(b, c)
+    ca_angle = angular_distance(c, a)
 
     longest = max(
         ab_angle,
@@ -85,12 +85,12 @@ def recursively_subdivide_triangle(a, b, c, limit):
         ab = normalize(a + b)
 
         return (
-            recursively_subdivide_triangle(
+            subdivide_spherical_triangle(
                 a, ab, c,
                 limit,
             )
             +
-            recursively_subdivide_triangle(
+            subdivide_spherical_triangle(
                 ab, b, c,
                 limit,
             )
@@ -100,12 +100,12 @@ def recursively_subdivide_triangle(a, b, c, limit):
         bc = normalize(b + c)
 
         return (
-            recursively_subdivide_triangle(
+            subdivide_spherical_triangle(
                 a, b, bc,
                 limit,
             )
             +
-            recursively_subdivide_triangle(
+            subdivide_spherical_triangle(
                 a, bc, c,
                 limit,
             )
@@ -115,12 +115,12 @@ def recursively_subdivide_triangle(a, b, c, limit):
         ca = normalize(c + a)
 
         return (
-            recursively_subdivide_triangle(
+            subdivide_spherical_triangle(
                 a, b, ca,
                 limit,
             )
             +
-            recursively_subdivide_triangle(
+            subdivide_spherical_triangle(
                 ca, b, c,
                 limit,
             )

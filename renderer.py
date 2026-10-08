@@ -19,7 +19,7 @@ CITY_FRAGMENT_SHADER = 'shaders/city.frag'
 
 MINOR_CITY_TEXTURE = 'assets/circle.png'
 MAJOR_CITY_TEXTURE = 'assets/circle_dot.png'
-CAPITAL_CITY_TEXTURE = 'assets/circle_star.png'
+MAJOR_CAPITAL_TEXURE = 'assets/circle_star.png'
 
 class Renderer:
     def __init__(self, world):
@@ -35,6 +35,11 @@ class Renderer:
         # OpenGL context
         self.ctx = moderngl.create_context()
         self.ctx.enable_direct(GL_PROGRAM_POINT_SIZE)
+        self.ctx.enable(moderngl.BLEND)
+        self.ctx.blend_func = (
+                moderngl.SRC_ALPHA,
+                moderngl.ONE_MINUS_SRC_ALPHA,
+                )
 
         self._load_programs()
         self._load_camera_buffer()
@@ -53,7 +58,12 @@ class Renderer:
         # Cities
         self.minor_city_texture = self._load_texture(MINOR_CITY_TEXTURE)
         self.major_city_texture = self._load_texture(MAJOR_CITY_TEXTURE)
-        self.capital_city_texture = self._load_texture(CAPITAL_CITY_TEXTURE)
+        self.major_capital_texture = self._load_texture(MAJOR_CAPITAL_TEXURE)
+        self.city_textures = {
+                'circle': self.minor_city_texture,
+                'circle+dot': self.major_city_texture,
+                'circle+star': self.major_capital_texture,
+                }
 
     # Load my custom OpenGL shaders
     def _load_programs(self):
@@ -72,6 +82,7 @@ class Renderer:
             geometry_shader = vector_geometry_shader,
             fragment_shader = solid_fragment_shader,
         )
+        self.vector_program['u_max_arc'].value = config.MAX_VECTOR_ARC
 
         self.fill_program = self.ctx.program(
             vertex_shader = globe_vertex_shader,
@@ -109,33 +120,33 @@ class Renderer:
                 ]:
             program["Camera"].binding = self.camera_binding
 
-    def _get_assets_vao(self, assets_vertices, program):
+    def _create_position_vao(self, assets_vertices, program):
         buffer = self.ctx.buffer(assets_vertices.tobytes())
         assets_vao = self.ctx.simple_vertex_array(program, buffer, 'in_pos')
         return assets_vao
 
     def _load_assets_vao(self, world):
-        self.ocean_vao = self._get_assets_vao(
+        self.ocean_vao = self._create_position_vao(
                 world.ocean_vertices,
                 self.screen_program
                 )
-        self.coastlines_vao = self._get_assets_vao(
+        self.coastlines_vao = self._create_position_vao(
                 world.coastlines_vertices,
                 self.vector_program
                 )
-        self.land_vao = self._get_assets_vao(
+        self.land_vao = self._create_position_vao(
                 world.land_vertices,
                 self.fill_program
                 )
-        self.lakes_vao = self._get_assets_vao(
+        self.lakes_vao = self._create_position_vao(
                 world.lakes_vertices,
                 self.fill_program
                 )
-        self.rivers_vao = self._get_assets_vao(
+        self.rivers_vao = self._create_position_vao(
                 world.rivers_vertices,
                 self.vector_program
                 )
-        self.borders_vao = self._get_assets_vao(
+        self.borders_vao = self._create_position_vao(
                 world.borders_vertices,
                 self.vector_program
                 )
@@ -213,16 +224,7 @@ class Renderer:
         # Cities
         if self.show_cities:
             for city_vao, symbol in self.cities:
-                self.ctx.enable(moderngl.BLEND)
-                self.ctx.blend_func = (
-                        moderngl.SRC_ALPHA,
-                        moderngl.ONE_MINUS_SRC_ALPHA,
-                        )
-                texture = {
-                        'circle+star': self.capital_city_texture,
-                        'circle+dot': self.major_city_texture,
-                        'circle': self.minor_city_texture,
-                        }[symbol]
+                texture = self.city_textures[symbol]
                 texture.use(location = 0)
                 self.city_program['u_texture'].value = 0
                 city_vao.render(mode = moderngl.TRIANGLES)
@@ -230,7 +232,6 @@ class Renderer:
         # Voronoi edges
         if self.show_voronoi and self.voronoi_edge_vao is not None:
             self.vector_program['u_color'].value = config.VORONOI_EDGE_COLOR
-            self.vector_program['u_max_arc'].value = config.MAX_VECTOR_ARC
             self.ctx.line_width = config.VORONOI_EDGE_THICKNESS
             self.voronoi_edge_vao.render(mode = moderngl.LINES)
 
@@ -242,21 +243,6 @@ class Renderer:
 
         # Disable line clipping before calling imgui
         self.ctx.disable_direct(GL_CLIP_DISTANCE0)
-
-    def update_voronoi(self, world):
-        seed_vertices = world.voronoi.seed_vertices
-        if len(seed_vertices):
-            self.voronoi_seed_vao = self._get_assets_vao(
-                    seed_vertices,
-                    self.point_program,
-                    )
-
-        edge_vertices = world.voronoi.edge_vertices
-        if len(edge_vertices):
-            self.voronoi_edge_vao = self._get_assets_vao(
-                    edge_vertices,
-                    self.vector_program,
-                    )
 
     def _load_texture(self, filename):
         image = Image.open(filename).convert('RGBA')
@@ -329,3 +315,17 @@ class Renderer:
             'in_pos',
         )
 
+    def update_voronoi(self, world):
+        seed_vertices = world.voronoi.seed_vertices
+        if len(seed_vertices):
+            self.voronoi_seed_vao = self._create_position_vao(
+                    seed_vertices,
+                    self.point_program,
+                    )
+
+        edge_vertices = world.voronoi.edge_vertices
+        if len(edge_vertices):
+            self.voronoi_edge_vao = self._create_position_vao(
+                    edge_vertices,
+                    self.vector_program,
+                    )
