@@ -13,6 +13,7 @@ import config
 from common import lonlat_to_xyz
 from voronoi import Voronoi
 from region import Region
+from border import Border, generate_land_border
 
 CITIES_FILENAME = 'misc/cities.tsv'
 
@@ -54,6 +55,7 @@ class World:
         self.admin_borders_vertices = self._line_vertices(admin_borders)
 
         self.voronoi = Voronoi()
+        self.borders = {}
         self.regions = []
         self.hovered_region = None
 
@@ -83,6 +85,7 @@ class World:
 
     def add_voronoi_seed(self, point):
         self.voronoi.add_seed(point)
+        self.borders = {}
         self._rebuild_regions_from_voronoi()
 
     def region_at(self, point):
@@ -139,3 +142,93 @@ class World:
                 )
         return asset
 
+    def generate_borders(self):
+        self.borders = {}
+
+        for (a, b), region_ids in self.voronoi.edges.items():
+            # Every ordinary spherical Voronoi edge should separate two cells.
+            if len(region_ids) != 2:
+                continue
+
+            region_a, region_b = region_ids
+
+            border = Border(
+                region_a=region_a,
+                region_b=region_b,
+                start=self.voronoi.vertices[a],
+                end=self.voronoi.vertices[b],
+            )
+
+            generate_land_border(border)
+
+            self.borders[border.key] = border
+
+        self._rebuild_regions_from_borders()
+
+    @property
+    def border_vertices(self):
+        vertices = []
+
+        for border in self.borders.values():
+            points = border.vertices
+
+            for a, b in zip(
+                points[:-1],
+                points[1:],
+            ):
+                vertices.extend((a, b))
+
+        return np.asarray(vertices, dtype='f4')
+
+    def clear_borders(self):
+        self.borders = {}
+        self._rebuild_regions_from_voronoi()
+
+
+    def _rebuild_regions_from_borders(self):
+        regions = []
+
+        edge_regions = self.voronoi.edges
+
+        for region_id, indices in enumerate(self.voronoi.region_indices):
+            boundary = []
+
+            for a, b in zip(
+                indices,
+                indices[1:] + indices[:1],
+            ):
+                edge_key = tuple(sorted((a, b)))
+                region_ids = edge_regions[edge_key]
+
+                border_key = tuple(sorted(region_ids))
+                border = self.borders[border_key]
+
+                vertices = border.vertices
+
+                # Border orientation may be opposite to this region's
+                # traversal around its polygon.
+                if not np.allclose(
+                    vertices[0],
+                    self.voronoi.vertices[a],
+                ):
+                    vertices = vertices[::-1]
+
+                # Exclude the final endpoint because the following
+                # border starts at the same Voronoi vertex.
+                boundary.extend(vertices[:-1])
+
+            regions.append(
+                Region(
+                    region_id,
+                    np.asarray(boundary, dtype='f8'),
+                )
+            )
+
+        self.regions = regions
+        self.hovered_region = None
+
+    def reroll_borders(self):
+        for border in self.borders.values():
+            generate_land_border(border)
+
+        self._rebuild_regions_from_borders()

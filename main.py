@@ -173,10 +173,12 @@ def draw_menu_bar(editor, world, renderer):
 
     if imgui.begin_menu('Borders', True):
         if imgui.menu_item('Generate')[0]:
-            pass
+            world.generate_borders()
+            renderer.update_generated_borders(world)
 
         if imgui.menu_item('Reroll Unfrozen')[0]:
-            pass
+            world.reroll_borders()
+            renderer.update_generated_borders(world)
 
         if imgui.menu_item('Reroll Selected')[0]:
             pass
@@ -184,7 +186,8 @@ def draw_menu_bar(editor, world, renderer):
         imgui.separator()
 
         if imgui.menu_item('Clear Generated Borders')[0]:
-            pass
+            world.clear_borders()
+            renderer.update_generated_borders(world)
 
         imgui.end_menu()
 
@@ -344,6 +347,7 @@ while running:
                 if point is not None:
                     world.add_voronoi_seed(point)
                     renderer.update_voronoi(world)
+                    renderer.update_generated_borders(world)
 
             elif event.button == 3:
                 # TODO: remove seed

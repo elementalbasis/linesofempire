@@ -45,22 +45,30 @@ class Voronoi:
         if not self.region_indices:
             return np.empty((0, 3), dtype = 'f4')
 
-        seen = set()
         vertices = []
 
-        for region in self.region_indices:
-            for a, b in zip(
-                    region,
-                    region[1:] + region[:1],
-                    ):
-                edge = tuple(sorted((a, b)))
-
-                if edge in seen:
-                    continue
-
-                seen.add(edge)
-
-                vertices.append(self.vertices[a])
-                vertices.append(self.vertices[b])
+        for a, b in self.edges:
+            vertices.extend((
+                self.vertices[a],
+                self.vertices[b],
+                ))
 
         return np.asarray(vertices, dtype = 'f4')
+
+    @property
+    def edges(self):
+        edges = {}
+
+        for region_id, region in enumerate(self.region_indices):
+            for a, b in zip(
+                region,
+                region[1:] + region[:1],
+            ):
+                edge_key = tuple(sorted((a, b)))
+
+                if edge_key not in edges:
+                    edges[edge_key] = []
+
+                edges[edge_key].append(region_id)
+
+        return edges

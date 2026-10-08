@@ -52,6 +52,8 @@ class Renderer:
         self.voronoi_seed_vao = None
         self.voronoi_edge_vao = None
 
+        self.generated_borders_vao = None
+
         self.world = world
         #self.region_vaos = []
         self.highlight_region = None
@@ -245,6 +247,24 @@ class Renderer:
             self.point_program['u_point_size'].value = config.VORONOI_SEED_SIZE
             self.voronoi_seed_vao.render(mode = moderngl.POINTS)
 
+
+        # Generated game borders
+        if (
+            self.show_generated_borders
+            and self.generated_borders_vao is not None
+        ):
+            self.vector_program['u_color'].value = (
+                config.GENERATED_BORDER_COLOR
+            )
+
+            self.ctx.line_width = (
+                config.GENERATED_BORDER_THICKNESS
+            )
+
+            self.generated_borders_vao.render(
+                mode=moderngl.LINES
+            )
+
         # Disable line clipping before calling imgui
         self.ctx.disable_direct(GL_CLIP_DISTANCE0)
 
@@ -333,3 +353,16 @@ class Renderer:
                     edge_vertices,
                     self.vector_program,
                     )
+
+    def update_generated_borders(self, world):
+        if self.generated_borders_vao is not None:
+            self.generated_borders_vao.release()
+            self.generated_borders_vao = None
+
+        vertices = world.border_vertices
+
+        if len(vertices):
+            self.generated_borders_vao = self._create_position_vao(
+                vertices,
+                self.vector_program,
+            )
