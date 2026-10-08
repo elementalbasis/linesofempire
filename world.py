@@ -40,7 +40,7 @@ class World:
                 'physical',
                 'coastline',
                 )
-        borders = World._load_natural_earth(
+        admin_borders = World._load_natural_earth(
                 config.MAP_SCALE,
                 'cultural',
                 'admin_0_boundary_lines_land',
@@ -51,7 +51,7 @@ class World:
         self.lakes_vertices = self._polygon_vertices(lakes)
         self.rivers_vertices = self._line_vertices(rivers)
         self.coastlines_vertices = self._line_vertices(coastlines)
-        self.borders_vertices = self._line_vertices(borders)
+        self.admin_borders_vertices = self._line_vertices(admin_borders)
 
         self.voronoi = Voronoi()
         self.regions = []

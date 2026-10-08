@@ -25,12 +25,15 @@ class Renderer:
     def __init__(self, world):
         self.show_lakes = True
         self.show_rivers = True
-        self.show_borders = True
+        self.show_admin_borders = True
         self.show_land = True
         self.show_ocean = True
         self.show_coastlines = True
-        self.show_voronoi = True
+        self.show_voronoi_seeds = True
+        self.show_voronoi_edges = True
         self.show_cities = True
+        self.show_generated_borders = True
+        self.show_regions = True
 
         # OpenGL context
         self.ctx = moderngl.create_context()
@@ -146,8 +149,8 @@ class Renderer:
                 world.rivers_vertices,
                 self.vector_program
                 )
-        self.borders_vao = self._create_position_vao(
-                world.borders_vertices,
+        self.admin_borders_vao = self._create_position_vao(
+                world.admin_borders_vertices,
                 self.vector_program
                 )
 
@@ -189,11 +192,12 @@ class Renderer:
             self.land_vao.render(mode = moderngl.TRIANGLES)
 
         # Highlighted region
-        region = self.world.hovered_region
-        self.update_highlight(region)
-        if self.highlight_vao is not None:
-            self.fill_program['u_color'].value = config.REGION_HOVER_COLOR
-            self.highlight_vao.render(mode = moderngl.TRIANGLES)
+        if self.show_regions:
+            region = self.world.hovered_region
+            self.update_highlight(region)
+            if self.highlight_vao is not None:
+                self.fill_program['u_color'].value = config.REGION_HOVER_COLOR
+                self.highlight_vao.render(mode = moderngl.TRIANGLES)
 
         # Lakes
         if self.show_lakes:
@@ -210,10 +214,10 @@ class Renderer:
             self.rivers_vao.render(mode = moderngl.LINES)
 
         # Borders
-        if self.show_borders:
-            self.vector_program['u_color'].value = config.BORDER_COLOR
-            self.ctx.line_width = config.BORDER_THICKNESS
-            self.borders_vao.render(mode = moderngl.LINES)
+        if self.show_admin_borders:
+            self.vector_program['u_color'].value = config.ADMIN_BORDER_COLOR
+            self.ctx.line_width = config.ADMIN_BORDER_THICKNESS
+            self.admin_borders_vao.render(mode = moderngl.LINES)
 
         # Coastlines
         if self.show_coastlines:
@@ -230,13 +234,13 @@ class Renderer:
                 city_vao.render(mode = moderngl.TRIANGLES)
 
         # Voronoi edges
-        if self.show_voronoi and self.voronoi_edge_vao is not None:
+        if self.show_voronoi_edges and self.voronoi_edge_vao is not None:
             self.vector_program['u_color'].value = config.VORONOI_EDGE_COLOR
             self.ctx.line_width = config.VORONOI_EDGE_THICKNESS
             self.voronoi_edge_vao.render(mode = moderngl.LINES)
 
         # Voronoi seeds
-        if self.show_voronoi and self.voronoi_seed_vao is not None:
+        if self.show_voronoi_seeds and self.voronoi_seed_vao is not None:
             self.point_program['u_color'].value = config.VORONOI_SEED_COLOR
             self.point_program['u_point_size'].value = config.VORONOI_SEED_SIZE
             self.voronoi_seed_vao.render(mode = moderngl.POINTS)
