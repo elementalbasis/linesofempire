@@ -13,6 +13,7 @@ import config
 from common import lonlat_to_xyz
 from voronoi import Voronoi
 from region import Region
+from georaster import GeoRaster
 
 CITIES_FILENAME = 'misc/cities.tsv'
 
@@ -69,6 +70,13 @@ class World:
         self.hovered_region = None
 
         self.cities_df = pd.read_csv(CITIES_FILENAME, sep = '\t')
+
+        self.georasters = [
+                GeoRaster(
+                    'assets/european_theater.tif',
+                    grid_step = 16,
+                    ),
+                ]
 
     # Create ocean disk out of triangles
     def _load_ocean_vertices(self):

@@ -227,6 +227,20 @@ class Renderer:
                 self.city_program['u_texture'].value = 0
                 city_vao.render(mode = moderngl.TRIANGLES)
 
+        # GeoRaster
+        self.ctx.enable(moderngl.BLEND)
+        self.ctx.blend_func = (
+            moderngl.SRC_ALPHA,
+            moderngl.ONE_MINUS_SRC_ALPHA,
+        )
+        texture.use(location=0)
+        self.georaster_program[
+            'u_texture'
+        ].value = 0
+        vao.render(
+            mode=moderngl.TRIANGLES
+        )
+
         # Voronoi edges
         if self.show_voronoi and self.voronoi_edge_vao is not None:
             self.vector_program['u_color'].value = config.VORONOI_EDGE_COLOR
@@ -348,3 +362,38 @@ class Renderer:
             'in_pos',
         )
 
+
+    def _load_georaster(self, raster):
+        image = raster.image
+
+        texture = self.ctx.texture(
+            (
+                raster.width,
+                raster.height,
+            ),
+            4,
+            image.tobytes(),
+        )
+
+        texture.filter = (
+            moderngl.LINEAR,
+            moderngl.LINEAR,
+        )
+
+        buffer = self.ctx.buffer(
+            raster.vertices.tobytes()
+        )
+
+        vao = self.ctx.vertex_array(
+            self.georaster_program,
+            [
+                (
+                    buffer,
+                    '3f 2f',
+                    'in_pos',
+                    'in_uv',
+                )
+            ],
+        )
+
+        return texture, vao
