@@ -13,11 +13,6 @@ class Voronoi:
         if len(self.seeds) < 4:
             return
 
-        '''
-        points = np.asarray(list(set(
-            lonlat_to_xyz(lon, lat) for lon, lat in self.seeds
-            )))
-        '''
         points = np.asarray(
                 [lonlat_to_xyz(lon, lat) for lon, lat in self.seeds]
                 )

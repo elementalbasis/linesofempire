@@ -42,8 +42,6 @@ def tangent_basis(lon, lat):
             ])
 
     east = np.array([
-            #- math.sin(lon),
-            #- math.cos(lon),
             - math.sin(lon),
             math.cos(lon),
             0.0,
@@ -53,7 +51,6 @@ def tangent_basis(lon, lat):
             - math.sin(lat) * math.cos(lon),
             - math.sin(lat) * math.sin(lon),
             math.cos(lat),
-            #math.sin(lat),
             ])
 
     return east, north, forward
@@ -67,8 +64,6 @@ def normalize(v):
 
 def angle(a, b):
     return math.acos(np.clip(np.dot(a, b), -1.0, 1.0))
-
-
 
 def recursively_subdivide_triangle(a, b, c, limit):
     ab_angle = angle(a, b)

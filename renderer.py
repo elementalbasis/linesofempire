@@ -294,25 +294,6 @@ class Renderer:
             *tl, 0.0, 1.0,
             ], dtype='f4')
 
-    '''
-    def update_regions(self, world):
-        for vao in self.region_vaos:
-            if vao is not None:
-                vao.release()
-
-        self.region_vaos = []
-        for region in world.regions:
-            if len(region.vertices):
-                vao = self._get_assets_vao(
-                        region.vertices,
-                        self.fill_program,
-                        )
-            else:
-                vao = None
-
-            self.region_vaos.append(vao)
-    '''
-
     def update_highlight(self, region):
         # Nothing changed.
         if region is self.highlight_region:

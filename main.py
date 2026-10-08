@@ -47,8 +47,6 @@ io.display_size = pygame.display.get_window_size()
 
 
 
-
-
 # Game loop
 while running:
     # Get window size
@@ -116,31 +114,15 @@ while running:
             imgui.end_menu()
         imgui.end_main_menu_bar()
 
-
-
     # Render the world
     renderer.render(camera, width, height)
-
-
 
     # Render the top menu on top of the world
     imgui.render()
     ui_renderer.render(imgui.get_draw_data())
 
-    # flip() the display to put your work on screen
-    #
-    # Even though this function is called flip(), according to the PyGame
-    # documentation, it simply updates the screen. The related update()
-    # function updates only a selected portion of the screen. Neither of
-    # these functions work if using OPENGL.
-    #
-    # For more context, it's called flip because it's meant to be used with
-    # a double buffer. That's when there's a front buffer and a back buffer,
-    # with the front buffer displayed to the user and the back buffer being the
-    # one that the program actually writes to.
+    # Flip the double buffer
     pygame.display.flip()
-
-    #clock.tick(60) # limits FPS to 60
 
 ui_renderer.shutdown()
 pygame.quit()
