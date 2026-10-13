@@ -10,6 +10,8 @@ from spherical import (
     same_point,
     spherical_polygon_area,
     spherical_polygon_contains,
+    closest_point_on_arc,
+    closest_points_between_arcs,
 )
 
 
@@ -18,6 +20,7 @@ class BoundaryKind(Enum):
     RIVER = auto()
     ADMIN = auto()
     COAST = auto()
+    SNAP = auto()
 
 
 BOUNDARY_WEIGHT = {
@@ -25,6 +28,7 @@ BOUNDARY_WEIGHT = {
     BoundaryKind.RIVER: 2.0,
     BoundaryKind.ADMIN: 2.0,
     BoundaryKind.COAST: 4.0,
+    BoundaryKind.SNAP: 0.0,
 }
 
 class SourcePath:
@@ -92,6 +96,12 @@ class SourceArc:
         self.kind = kind
         self.source_id = source_id
 
+        self.terminal_start = False
+        self.terminal_end = False
+
+        self._refresh()
+
+    def _refresh(self):
         self.length = angular_distance(
             self.start,
             self.end,
@@ -102,6 +112,19 @@ class SourceArc:
         )
 
         self.radius = 0.5 * self.length
+
+    def set_start(self, point):
+        self.start = normalize(
+            np.asarray(point, dtype=np.float64)
+        )
+        self._refresh()
+
+    def set_end(self, point):
+        self.end = normalize(
+            np.asarray(point, dtype=np.float64)
+        )
+        self._refresh()
+
 
 class Vertex:
     def __init__(self, vertex_id, point):
@@ -128,6 +151,8 @@ class PartitionEdge:
         self.vertex_a = vertex_a
         self.vertex_b = vertex_b
 
+        self.active = True
+
         self.kinds = {kind}
         self.source_ids = set()
 
@@ -136,6 +161,7 @@ class PartitionEdge:
 
         self.halfedges = None
         self.length = None
+
 
 
 class HalfEdge:
@@ -329,85 +355,119 @@ class Partition:
         self.edges.append(edge)
         self._edge_lookup[key] = edge_id
 
-    def _node_arcs(self, arcs):
+    def _node_arcs(
+        self,
+        arcs,
+        snap_tolerance=math.radians(0.1),
+    ):
         split_points = [
             [arc.start, arc.end]
             for arc in arcs
         ]
 
-        if len(arcs) > 1:
-            centers = np.asarray(
-                [arc.midpoint for arc in arcs],
-                dtype=np.float64,
-            )
+        connectors = []
+        connector_keys = set()
 
-            tree = cKDTree(centers)
+        for i, j in self._candidate_arc_pairs(
+            arcs,
+            padding=snap_tolerance,
+        ):
+            arc_a = arcs[i]
+            arc_b = arcs[j]
 
-            max_radius = max(
-                arc.radius
-                for arc in arcs
-            )
+            # Segments belonging to the same source path already
+            # know their own connectivity.
+            if (
+                arc_a.kind == arc_b.kind
+                and arc_a.source_id == arc_b.source_id
+            ):
+                continue
 
-            # If two arcs intersect, their midpoint separation
-            # cannot exceed the sum of their cap radii.
-            #
-            # query_pairs requires one global search radius,
-            # so 2 * max_radius is a conservative broad phase.
-            search_angle = min(
+            maximum_separation = min(
                 math.pi,
-                2.0 * max_radius + 1e-8,
+                arc_a.radius
+                + arc_b.radius
+                + snap_tolerance,
             )
 
-            # Convert angular distance on the unit sphere to
-            # ordinary Euclidean chord distance in XYZ.
-            search_chord = (
-                2.0
-                * math.sin(search_angle / 2.0)
+            if (
+                np.dot(
+                    arc_a.midpoint,
+                    arc_b.midpoint,
+                )
+                < math.cos(maximum_separation)
+            ):
+                continue
+
+            intersections = arc_intersections(
+                arc_a.start,
+                arc_a.end,
+                arc_b.start,
+                arc_b.end,
             )
 
-            candidate_pairs = tree.query_pairs(
-                search_chord,
-                output_type='ndarray',
-            )
-
-            for i, j in candidate_pairs:
-                arc_a = arcs[i]
-                arc_b = arcs[j]
-
-                # Refine the conservative KD-tree result using
-                # each pair's actual spherical-cap radii.
-                maximum_separation = min(
-                    math.pi,
-                    arc_a.radius
-                    + arc_b.radius
-                    + 1e-8,
-                )
-
-                minimum_dot = math.cos(
-                    maximum_separation
-                )
-
-                if (
-                    np.dot(
-                        arc_a.midpoint,
-                        arc_b.midpoint,
-                    )
-                    < minimum_dot
-                ):
-                    continue
-
-                intersections = arc_intersections(
-                    arc_a.start,
-                    arc_a.end,
-                    arc_b.start,
-                    arc_b.end,
-                )
-
+            if intersections:
                 for point in intersections:
                     split_points[i].append(point)
                     split_points[j].append(point)
 
+                continue
 
+            # Generated strategic borders must not snap to each other.
+            if (
+                arc_a.kind == BoundaryKind.VORONOI
+                and arc_b.kind == BoundaryKind.VORONOI
+            ):
+                continue
+
+            point_a, point_b = self._closest_arc_points(arc_a, arc_b)
+
+            # Avoid gluing nearby parallel rivers to rivers,
+            # coastlines to coastlines, etc.
+            if arc_a.kind == arc_b.kind:
+                # Segments of the exact same source path already know
+                # how they connect.
+                if arc_a.source_id == arc_b.source_id:
+                    continue
+
+                # Different source paths of the same feature type may
+                # actually be fragments of one real feature. Only allow
+                # snapping when at least one side is a true path terminus.
+                if not (
+                    arc_a.terminal_start
+                    or arc_a.terminal_end
+                    or arc_b.terminal_start
+                    or arc_b.terminal_end
+                ):
+                    continue
+
+            distance = angular_distance(
+                point_a,
+                point_b,
+            )
+
+            if (
+                distance <= 1e-6
+                or distance > snap_tolerance
+            ):
+                continue
+
+            split_points[i].append(point_a)
+            split_points[j].append(point_b)
+
+            key = tuple(sorted((
+                tuple(np.round(point_a, 9)),
+                tuple(np.round(point_b, 9)),
+            )))
+
+            if key not in connector_keys:
+                connector_keys.add(key)
+                connectors.append((
+                    point_a,
+                    point_b,
+                ))
+
+        # Existing split/sort/add-edge portion.
         for arc, points in zip(
             arcs,
             split_points,
@@ -449,6 +509,21 @@ class Partition:
                     arc.source_id,
                 )
 
+        # Tiny topological bridges are already noded because their
+        # endpoints were inserted into the corresponding source arcs.
+        for snap_id, (start, end) in enumerate(connectors):
+            vertex_a = self._intern_vertex(start)
+            vertex_b = self._intern_vertex(end)
+
+            self._add_edge(
+                vertex_a,
+                vertex_b,
+                BoundaryKind.SNAP,
+                ('snap', snap_id),
+            )
+
+        self.snap_count = len(connectors)
+
     # ----------------------------------------------------------
     # Half-edge topology
     # ----------------------------------------------------------
@@ -460,6 +535,10 @@ class Partition:
             vertex.outgoing = []
 
         for edge in self.edges:
+            edge.halfedges = None
+            if not edge.active:
+                continue
+
             first_id = len(self.halfedges)
             second_id = first_id + 1
 
@@ -661,6 +740,7 @@ class Partition:
 
     def _build_arrangement(self, arcs):
         self._node_arcs(arcs)
+        self._prune_irrelevant_feature_components()
         self._build_halfedges()
         self._build_atoms()
 
@@ -672,8 +752,32 @@ class Partition:
         if not border_arcs:
             return
 
-        river_arcs = self._river_arcs(world)
-        arcs = border_arcs + river_arcs
+        river_arcs = self._feature_arcs(
+            world.river_paths,
+            BoundaryKind.RIVER,
+        )
+
+        admin_arcs = self._feature_arcs(
+            world.admin_border_paths,
+            BoundaryKind.ADMIN,
+        )
+
+        coast_arcs = self._feature_arcs(
+            world.coastline_paths,
+            BoundaryKind.COAST,
+        )
+
+        feature_arcs = river_arcs + admin_arcs + coast_arcs
+        arcs = border_arcs + feature_arcs
+
+
+        print(
+            f'source arcs: '
+            f'{len(border_arcs)} strategic, '
+            f'{len(river_arcs)} river, '
+            f'{len(admin_arcs)} admin, '
+            f'{len(coast_arcs)} coast, '
+        )
 
         self._build_arrangement(arcs)
         self._assign_roots(world)
@@ -691,7 +795,10 @@ class Partition:
         )
 
 
-        euler = len(self.vertices) - len(self.edges) + len(self.atoms)
+        active_edges = [edge for edge in self.edges if edge.active]
+        active_vertices = {vertex_id for edge in active_edges
+                           for vertex_id in (edge.vertex_a, edge.vertex_b)}
+        euler = len(active_vertices) - len(active_edges) + len(self.atoms)
         print(
             f'{len(self.vertices)} vertices, '
             f'{len(self.edges)} edges, '
@@ -703,93 +810,41 @@ class Partition:
 
 
     @staticmethod
-    def _river_paths(world):
-        return [
-            SourcePath(
-                points=points,
-                kind=BoundaryKind.RIVER,
-                source_id=river_id,
-            )
-            for river_id, points
-            in enumerate(world.river_paths)
-        ]
-
-    @staticmethod
-    def _region_arcs(region):
-        points = region.boundary
-
-        return [
-            (start, end)
-            for start, end in zip(
-                points,
-                np.roll(points, -1, axis=0),
-            )
-            if angular_distance(start, end) >= 1e-10
-        ]
-
-
-
-    @staticmethod
-    def _nearby_arcs(
-        arc,
-        other_arcs,
-        tree,
-        max_other_radius,
-    ):
-        search_angle = min(
-            math.pi,
-            arc.radius + max_other_radius + 1e-8,
-        )
-
-        search_chord = (
-            2.0
-            * math.sin(search_angle / 2.0)
-        )
-
-        candidates = tree.query_ball_point(
-            arc.midpoint,
-            search_chord,
-        )
-
-        for index in candidates:
-            other = other_arcs[index]
-
-            maximum_separation = min(
-                math.pi,
-                arc.radius + other.radius + 1e-8,
-            )
-
-            if (
-                np.dot(
-                    arc.midpoint,
-                    other.midpoint,
-                )
-                < math.cos(maximum_separation)
-            ):
-                continue
-
-            yield other
-
-
-    @staticmethod
-    def _river_arcs(world):
+    def _feature_arcs(paths, kind):
         arcs = []
 
-        for river_id, points in enumerate(
-            world.river_paths
-        ):
+        for path_id, points in enumerate(paths):
             path = SourcePath(
                 points=points,
-                kind=BoundaryKind.RIVER,
-                source_id=river_id,
+                kind=kind,
+                source_id=(kind, path_id),
             )
 
-            arcs.extend(path.arcs)
+            path_arcs = path.arcs
+
+            if not path_arcs:
+                continue
+
+            closed = same_point(
+                points[0],
+                points[-1],
+            )
+
+            if not closed:
+                path_arcs[0].terminal_start = True
+                path_arcs[-1].terminal_end = True
+
+            arcs.extend(path_arcs)
 
         return arcs
 
-
     def edge_separates_atoms(self, edge):
+        if (
+            not edge.active
+            or edge.halfedges is None
+        ):
+            return False
+
         first_id, second_id = edge.halfedges
 
         first_atom = self.halfedges[
@@ -804,4 +859,378 @@ class Partition:
             first_atom is not None
             and second_atom is not None
             and first_atom != second_atom
+        )
+
+
+    def _prune_irrelevant_feature_components(self):
+        strategic_vertices = set()
+
+        for edge in self.edges:
+            if BoundaryKind.VORONOI in edge.kinds:
+                strategic_vertices.add(edge.vertex_a)
+                strategic_vertices.add(edge.vertex_b)
+
+        # Feature-edge adjacency by vertex.
+        adjacency = {}
+
+        feature_edge_ids = []
+
+        for edge in self.edges:
+            is_feature = any(
+                kind != BoundaryKind.VORONOI
+                for kind in edge.kinds
+            )
+
+            if not is_feature:
+                continue
+
+            feature_edge_ids.append(edge.id)
+
+            adjacency.setdefault(
+                edge.vertex_a,
+                [],
+            ).append(edge.id)
+
+            adjacency.setdefault(
+                edge.vertex_b,
+                [],
+            ).append(edge.id)
+
+        visited = set()
+
+        for start_edge_id in feature_edge_ids:
+            if start_edge_id in visited:
+                continue
+
+            component_edges = set()
+            component_vertices = set()
+
+            stack = [start_edge_id]
+
+            while stack:
+                edge_id = stack.pop()
+
+                if edge_id in visited:
+                    continue
+
+                visited.add(edge_id)
+                component_edges.add(edge_id)
+
+                edge = self.edges[edge_id]
+
+                for vertex_id in (
+                    edge.vertex_a,
+                    edge.vertex_b,
+                ):
+                    component_vertices.add(
+                        vertex_id
+                    )
+
+                    for neighbor_id in adjacency.get(
+                        vertex_id,
+                        (),
+                    ):
+                        if neighbor_id not in visited:
+                            stack.append(neighbor_id)
+
+            contacts = (
+                component_vertices
+                & strategic_vertices
+            )
+
+            # A feature network with fewer than two strategic
+            # contacts cannot cut the strategic partition.
+            if len(contacts) >= 2:
+                continue
+
+            for edge_id in component_edges:
+                edge = self.edges[edge_id]
+
+                # Never deactivate the strategic boundary itself,
+                # even if a feature happens to coincide with it.
+                if BoundaryKind.VORONOI not in edge.kinds:
+                    edge.active = False
+
+    @staticmethod
+    def _strategic_snap_connectors(
+        feature_arcs,
+        border_arcs,
+        tolerance=math.radians(0.05),
+    ):
+        if not feature_arcs or not border_arcs:
+            return []
+
+        centers = np.asarray(
+            [
+                arc.midpoint
+                for arc in border_arcs
+            ],
+            dtype=np.float64,
+        )
+
+        tree = cKDTree(centers)
+
+        max_border_radius = max(
+            arc.radius
+            for arc in border_arcs
+        )
+
+        connectors = []
+        seen = set()
+
+        for feature in feature_arcs:
+            search_angle = min(
+                math.pi,
+                feature.radius
+                + max_border_radius
+                + tolerance,
+            )
+
+            search_chord = (
+                2.0
+                * math.sin(
+                    search_angle / 2.0
+                )
+            )
+
+            candidates = tree.query_ball_point(
+                feature.midpoint,
+                search_chord,
+            )
+
+            for border_index in candidates:
+                border = border_arcs[
+                    border_index
+                ]
+
+                # If they genuinely intersect, normal
+                # noding already handles it.
+                if arc_intersections(
+                    feature.start,
+                    feature.end,
+                    border.start,
+                    border.end,
+                ):
+                    continue
+
+                feature_point, border_point = (
+                    closest_points_between_arcs(
+                        feature.start,
+                        feature.end,
+                        border.start,
+                        border.end,
+                    )
+                )
+
+                distance = angular_distance(
+                    feature_point,
+                    border_point,
+                )
+
+                if distance > tolerance:
+                    continue
+
+                if distance < 1e-10:
+                    continue
+
+                key = (
+                    tuple(np.round(
+                        feature_point,
+                        decimals=9,
+                    )),
+                    tuple(np.round(
+                        border_point,
+                        decimals=9,
+                    )),
+                )
+
+                if key in seen:
+                    continue
+
+                seen.add(key)
+
+                connectors.append(
+                    SourceArc(
+                        start=feature_point,
+                        end=border_point,
+                        kind=BoundaryKind.SNAP,
+                        source_id=(
+                            'strategic-snap',
+                            len(connectors),
+                        ),
+                    )
+                )
+
+        return connectors
+
+    @staticmethod
+    def _arc_buckets(
+        arcs,
+        base_radius=math.radians(0.05),
+    ):
+        groups = {}
+
+        for index, arc in enumerate(arcs):
+            radius = max(arc.radius, 1e-12)
+
+            level = max(
+                0,
+                math.ceil(
+                    math.log2(radius / base_radius)
+                ),
+            )
+
+            groups.setdefault(level, []).append(index)
+
+        buckets = []
+
+        for indices in groups.values():
+            indices = np.asarray(
+                indices,
+                dtype=np.int64,
+            )
+
+            centers = np.asarray(
+                [
+                    arcs[index].midpoint
+                    for index in indices
+                ],
+                dtype=np.float64,
+            )
+
+            buckets.append((
+                indices,
+                cKDTree(centers),
+                max(
+                    arcs[index].radius
+                    for index in indices
+                ),
+            ))
+
+        return buckets
+
+    @staticmethod
+    def _candidate_arc_pairs(
+        arcs,
+        padding=0.0,
+    ):
+        buckets = Partition._arc_buckets(arcs)
+
+        for bucket_a_index, (
+            indices_a,
+            tree_a,
+            radius_a,
+        ) in enumerate(buckets):
+
+            for bucket_b_index in range(
+                bucket_a_index,
+                len(buckets),
+            ):
+                (
+                    indices_b,
+                    tree_b,
+                    radius_b,
+                ) = buckets[bucket_b_index]
+
+                search_angle = min(
+                    math.pi,
+                    radius_a
+                    + radius_b
+                    + padding,
+                )
+
+                search_chord = (
+                    2.0
+                    * math.sin(
+                        search_angle / 2.0
+                    )
+                )
+
+                if bucket_a_index == bucket_b_index:
+                    pairs = tree_a.query_pairs(
+                        search_chord,
+                        output_type='ndarray',
+                    )
+
+                    for local_a, local_b in pairs:
+                        yield (
+                            int(indices_a[local_a]),
+                            int(indices_a[local_b]),
+                        )
+
+                else:
+                    neighborhoods = tree_a.query_ball_tree(
+                        tree_b,
+                        search_chord,
+                    )
+
+                    for local_a, local_bs in enumerate(
+                        neighborhoods
+                    ):
+                        a = int(indices_a[local_a])
+
+                        for local_b in local_bs:
+                            yield (
+                                a,
+                                int(indices_b[local_b]),
+                            )
+
+    @staticmethod
+    def _closest_arc_points(arc_a, arc_b):
+        candidates = [
+            (
+                arc_a.start,
+                closest_point_on_arc(
+                    arc_a.start,
+                    arc_b.start,
+                    arc_b.end,
+                ),
+            ),
+            (
+                arc_a.end,
+                closest_point_on_arc(
+                    arc_a.end,
+                    arc_b.start,
+                    arc_b.end,
+                ),
+            ),
+            (
+                closest_point_on_arc(
+                    arc_b.start,
+                    arc_a.start,
+                    arc_a.end,
+                ),
+                arc_b.start,
+            ),
+            (
+                closest_point_on_arc(
+                    arc_b.end,
+                    arc_a.start,
+                    arc_a.end,
+                ),
+                arc_b.end,
+            ),
+        ]
+
+        return min(
+            candidates,
+            key=lambda pair:
+                angular_distance(
+                    pair[0],
+                    pair[1],
+                ),
+        )
+
+    @staticmethod
+    def _point_is_terminal(arc, point):
+        return (
+            (
+                arc.terminal_start
+                and same_point(point, arc.start)
+            )
+            or
+            (
+                arc.terminal_end
+                and same_point(point, arc.end)
+            )
         )

@@ -201,3 +201,105 @@ def spherical_polygon_area(vertices):
         )
 
     return abs(area)
+
+def closest_point_on_arc(point, start, end):
+    point = normalize(np.asarray(point, dtype=np.float64))
+    start = normalize(np.asarray(start, dtype=np.float64))
+    end = normalize(np.asarray(end, dtype=np.float64))
+
+    normal = np.cross(start, end)
+    normal_length = np.linalg.norm(normal)
+
+    if normal_length < POINT_TOLERANCE:
+        return start
+
+    normal /= normal_length
+
+    projected = (
+        point
+        - np.dot(point, normal) * normal
+    )
+
+    projected_length = np.linalg.norm(projected)
+
+    if projected_length < POINT_TOLERANCE:
+        return start
+
+    projected /= projected_length
+
+    # Pick the projection on the same hemisphere as point.
+    if np.dot(projected, point) < 0.0:
+        projected = -projected
+
+    if point_on_arc(
+        projected,
+        start,
+        end,
+        tolerance=1e-7,
+    ):
+        return projected
+
+    if (
+        angular_distance(point, start)
+        <= angular_distance(point, end)
+    ):
+        return start
+
+    return end
+
+def closest_points_between_arcs(
+    a_start,
+    a_end,
+    b_start,
+    b_end,
+):
+    candidates = []
+
+    point = closest_point_on_arc(
+        a_start,
+        b_start,
+        b_end,
+    )
+    candidates.append((
+        a_start,
+        point,
+    ))
+
+    point = closest_point_on_arc(
+        a_end,
+        b_start,
+        b_end,
+    )
+    candidates.append((
+        a_end,
+        point,
+    ))
+
+    point = closest_point_on_arc(
+        b_start,
+        a_start,
+        a_end,
+    )
+    candidates.append((
+        point,
+        b_start,
+    ))
+
+    point = closest_point_on_arc(
+        b_end,
+        a_start,
+        a_end,
+    )
+    candidates.append((
+        point,
+        b_end,
+    ))
+
+    return min(
+        candidates,
+        key=lambda pair:
+            angular_distance(
+                pair[0],
+                pair[1],
+            ),
+    )
