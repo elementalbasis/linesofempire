@@ -180,6 +180,7 @@ def draw_menu_bar(editor, world, renderer):
         if imgui.menu_item('Reroll Unfrozen')[0]:
             world.reroll_borders()
             renderer.update_generated_borders(world)
+            renderer.update_atoms(world)
 
         if imgui.menu_item('Reroll Selected')[0]:
             pass
@@ -189,6 +190,7 @@ def draw_menu_bar(editor, world, renderer):
         if imgui.menu_item('Clear Generated Borders')[0]:
             world.clear_borders()
             renderer.update_generated_borders(world)
+            renderer.update_atoms(world)
 
         imgui.end_menu()
 

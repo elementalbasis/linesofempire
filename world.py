@@ -241,24 +241,34 @@ class World:
 
     def reroll_borders(self):
         self.partition.clear()
+
         for border in self.borders.values():
             generate_land_border(border)
-        self._rebuild_regions_from_borders()
 
+        self._rebuild_regions_from_borders()
+        self.partition.build_from_borders(self)
 
     @property
     def atom_edge_vertices(self):
         vertices = []
 
-        for atom in self.partition.atoms:
-            coords = list(atom.geometry.exterior.coords)
+        partition = self.partition
 
-            points = [
-                lonlat_to_xyz(lon, lat)
-                for lon, lat in coords
-            ]
+        for edge in partition.edges:
+            start = partition.vertices[
+                edge.vertex_a
+            ].point
 
-            for a, b in zip(points[:-1], points[1:]):
-                vertices.extend((a, b))
+            end = partition.vertices[
+                edge.vertex_b
+            ].point
 
-        return np.asarray(vertices, dtype='f4')
+            vertices.extend((
+                start,
+                end,
+            ))
+
+        return np.asarray(
+            vertices,
+            dtype='f4',
+        )

@@ -254,4 +254,4 @@ def border_vertices(start, end, nodes):
 
         vertices.append(normalize(point))
 
-    return np.asarray(vertices, dtype='f4')
+    return np.asarray(vertices, dtype='f8')
