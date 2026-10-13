@@ -175,6 +175,7 @@ def draw_menu_bar(editor, world, renderer):
         if imgui.menu_item('Generate')[0]:
             world.generate_borders()
             renderer.update_generated_borders(world)
+            renderer.update_atoms(world)
 
         if imgui.menu_item('Reroll Unfrozen')[0]:
             world.reroll_borders()

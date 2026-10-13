@@ -14,6 +14,7 @@ from common import lonlat_to_xyz
 from voronoi import Voronoi
 from region import Region
 from border import Border, generate_land_border
+from partition import Partition
 
 CITIES_FILENAME = 'misc/cities.tsv'
 
@@ -54,10 +55,18 @@ class World:
         self.coastlines_vertices = self._line_vertices(coastlines)
         self.admin_borders_vertices = self._line_vertices(admin_borders)
 
+        self.land_geometries = land
+        self.river_geometries = rivers
+        self.coastline_geometries = coastlines
+        self.lake_geometries = lakes
+        self.admin_border_geometries = admin_borders
+
         self.voronoi = Voronoi()
         self.borders = {}
         self.regions = []
         self.hovered_region = None
+
+        self.partition = Partition()
 
         self.cities_df = pd.read_csv(CITIES_FILENAME, sep = '\t')
 
@@ -86,6 +95,7 @@ class World:
     def add_voronoi_seed(self, point):
         self.voronoi.add_seed(point)
         self.borders = {}
+        self.partition.clear()
         self._rebuild_regions_from_voronoi()
 
     def region_at(self, point):
@@ -164,6 +174,7 @@ class World:
             self.borders[border.key] = border
 
         self._rebuild_regions_from_borders()
+        self.partition.build_from_borders(self)
 
     @property
     def border_vertices(self):
@@ -182,6 +193,7 @@ class World:
 
     def clear_borders(self):
         self.borders = {}
+        self.partition.clear()
         self._rebuild_regions_from_voronoi()
 
 
@@ -228,7 +240,25 @@ class World:
         self.hovered_region = None
 
     def reroll_borders(self):
+        self.partition.clear()
         for border in self.borders.values():
             generate_land_border(border)
-
         self._rebuild_regions_from_borders()
+
+
+    @property
+    def atom_edge_vertices(self):
+        vertices = []
+
+        for atom in self.partition.atoms:
+            coords = list(atom.geometry.exterior.coords)
+
+            points = [
+                lonlat_to_xyz(lon, lat)
+                for lon, lat in coords
+            ]
+
+            for a, b in zip(points[:-1], points[1:]):
+                vertices.extend((a, b))
+
+        return np.asarray(vertices, dtype='f4')

@@ -53,6 +53,8 @@ class Renderer:
         self.voronoi_edge_vao = None
 
         self.generated_borders_vao = None
+        self.show_atom_edges = True
+        self.atom_edges_vao = None
 
         self.world = world
         #self.region_vaos = []
@@ -265,6 +267,15 @@ class Renderer:
                 mode=moderngl.LINES
             )
 
+        # Atoms
+
+        if self.show_atom_edges and self.atom_edges_vao is not None:
+            self.vector_program['u_color'].value = config.ATOM_EDGE_COLOR
+            self.ctx.line_width = config.ATOM_EDGE_THICKNESS
+            self.atom_edges_vao.render(
+                mode=moderngl.LINES
+            )
+
         # Disable line clipping before calling imgui
         self.ctx.disable_direct(GL_CLIP_DISTANCE0)
 
@@ -363,6 +374,19 @@ class Renderer:
 
         if len(vertices):
             self.generated_borders_vao = self._create_position_vao(
+                vertices,
+                self.vector_program,
+            )
+
+    def update_atoms(self, world):
+        if self.atom_edges_vao is not None:
+            self.atom_edges_vao.release()
+            self.atom_edges_vao = None
+
+        vertices = world.atom_edge_vertices
+
+        if len(vertices):
+            self.atom_edges_vao = self._create_position_vao(
                 vertices,
                 self.vector_program,
             )
