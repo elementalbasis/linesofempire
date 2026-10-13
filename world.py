@@ -70,6 +70,10 @@ class World:
 
         self.cities_df = pd.read_csv(CITIES_FILENAME, sep = '\t')
 
+        self.river_paths = self._line_paths(rivers)
+        self.coastline_paths = self._line_paths(coastlines)
+        self.admin_border_paths = self._line_paths(admin_borders)
+
     # Create ocean disk out of triangles
     def _load_ocean_vertices(self):
         ocean_vertices = [(0.0, 0.0)] # Start with the origin
@@ -255,6 +259,9 @@ class World:
         partition = self.partition
 
         for edge in partition.edges:
+            if not partition.edge_separates_atoms(edge):
+                continue
+
             start = partition.vertices[
                 edge.vertex_a
             ].point
@@ -272,3 +279,22 @@ class World:
             vertices,
             dtype='f4',
         )
+
+    @staticmethod
+    def _line_paths(geometries):
+        paths = []
+
+        for geometry in geometries:
+            for line in get_parts(geometry):
+                points = np.asarray(
+                    [
+                        lonlat_to_xyz(lon, lat)
+                        for lon, lat in line.coords
+                    ],
+                    dtype='f8',
+                )
+
+                if len(points) >= 2:
+                    paths.append(points)
+
+        return paths

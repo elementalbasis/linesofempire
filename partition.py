@@ -1,6 +1,7 @@
-from enum import Enum, auto
-
+import math
 import numpy as np
+from enum import Enum, auto
+from scipy.spatial import cKDTree
 
 from common import angular_distance, normalize
 from spherical import (
@@ -26,6 +27,51 @@ BOUNDARY_WEIGHT = {
     BoundaryKind.COAST: 4.0,
 }
 
+class SourcePath:
+    def __init__(
+        self,
+        points,
+        kind,
+        source_id=None,
+        closed=False,
+    ):
+        self.points = np.asarray(
+            points,
+            dtype=np.float64,
+        )
+
+        self.kind = kind
+        self.source_id = source_id
+        self.closed = closed
+
+        pairs = list(zip(
+            self.points[:-1],
+            self.points[1:],
+        ))
+
+        if self.closed:
+            pairs.append((
+                self.points[-1],
+                self.points[0],
+            ))
+
+        self._arcs = [
+            SourceArc(
+                start=start,
+                end=end,
+                kind=self.kind,
+                source_id=self.source_id,
+            )
+            for start, end in pairs
+            if angular_distance(
+                start,
+                end,
+            ) >= 1e-10
+        ]
+
+    @property
+    def arcs(self):
+        return self._arcs
 
 class SourceArc:
     def __init__(
@@ -46,6 +92,16 @@ class SourceArc:
         self.kind = kind
         self.source_id = source_id
 
+        self.length = angular_distance(
+            self.start,
+            self.end,
+        )
+
+        self.midpoint = normalize(
+            self.start + self.end
+        )
+
+        self.radius = 0.5 * self.length
 
 class Vertex:
     def __init__(self, vertex_id, point):
@@ -279,13 +335,66 @@ class Partition:
             for arc in arcs
         ]
 
-        # First implementation is intentionally O(n²).
-        # Optimize only if profiling says we need to.
-        for i in range(len(arcs)):
-            arc_a = arcs[i]
+        if len(arcs) > 1:
+            centers = np.asarray(
+                [arc.midpoint for arc in arcs],
+                dtype=np.float64,
+            )
 
-            for j in range(i + 1, len(arcs)):
+            tree = cKDTree(centers)
+
+            max_radius = max(
+                arc.radius
+                for arc in arcs
+            )
+
+            # If two arcs intersect, their midpoint separation
+            # cannot exceed the sum of their cap radii.
+            #
+            # query_pairs requires one global search radius,
+            # so 2 * max_radius is a conservative broad phase.
+            search_angle = min(
+                math.pi,
+                2.0 * max_radius + 1e-8,
+            )
+
+            # Convert angular distance on the unit sphere to
+            # ordinary Euclidean chord distance in XYZ.
+            search_chord = (
+                2.0
+                * math.sin(search_angle / 2.0)
+            )
+
+            candidate_pairs = tree.query_pairs(
+                search_chord,
+                output_type='ndarray',
+            )
+
+            for i, j in candidate_pairs:
+                arc_a = arcs[i]
                 arc_b = arcs[j]
+
+                # Refine the conservative KD-tree result using
+                # each pair's actual spherical-cap radii.
+                maximum_separation = min(
+                    math.pi,
+                    arc_a.radius
+                    + arc_b.radius
+                    + 1e-8,
+                )
+
+                minimum_dot = math.cos(
+                    maximum_separation
+                )
+
+                if (
+                    np.dot(
+                        arc_a.midpoint,
+                        arc_b.midpoint,
+                    )
+                    < minimum_dot
+                ):
+                    continue
 
                 intersections = arc_intersections(
                     arc_a.start,
@@ -297,6 +406,7 @@ class Partition:
                 for point in intersections:
                     split_points[i].append(point)
                     split_points[j].append(point)
+
 
         for arc, points in zip(
             arcs,
@@ -549,17 +659,23 @@ class Partition:
     # Public construction
     # ----------------------------------------------------------
 
-    def build_from_borders(self, world):
-        self.clear()
-
-        arcs = self._border_arcs(world)
-
-        if not arcs:
-            return
-
+    def _build_arrangement(self, arcs):
         self._node_arcs(arcs)
         self._build_halfedges()
         self._build_atoms()
+
+    def build_from_borders(self, world):
+        self.clear()
+
+        border_arcs = self._border_arcs(world)
+
+        if not border_arcs:
+            return
+
+        river_arcs = self._river_arcs(world)
+        arcs = border_arcs + river_arcs
+
+        self._build_arrangement(arcs)
         self._assign_roots(world)
         self._build_components()
 
@@ -574,10 +690,118 @@ class Partition:
             - roots
         )
 
+
+        euler = len(self.vertices) - len(self.edges) + len(self.atoms)
         print(
             f'{len(self.vertices)} vertices, '
             f'{len(self.edges)} edges, '
             f'{len(self.atoms)} atoms: '
             f'{roots} roots, '
             f'{orphans} orphans'
+            f'Euler = {euler}'
+        )
+
+
+    @staticmethod
+    def _river_paths(world):
+        return [
+            SourcePath(
+                points=points,
+                kind=BoundaryKind.RIVER,
+                source_id=river_id,
+            )
+            for river_id, points
+            in enumerate(world.river_paths)
+        ]
+
+    @staticmethod
+    def _region_arcs(region):
+        points = region.boundary
+
+        return [
+            (start, end)
+            for start, end in zip(
+                points,
+                np.roll(points, -1, axis=0),
+            )
+            if angular_distance(start, end) >= 1e-10
+        ]
+
+
+
+    @staticmethod
+    def _nearby_arcs(
+        arc,
+        other_arcs,
+        tree,
+        max_other_radius,
+    ):
+        search_angle = min(
+            math.pi,
+            arc.radius + max_other_radius + 1e-8,
+        )
+
+        search_chord = (
+            2.0
+            * math.sin(search_angle / 2.0)
+        )
+
+        candidates = tree.query_ball_point(
+            arc.midpoint,
+            search_chord,
+        )
+
+        for index in candidates:
+            other = other_arcs[index]
+
+            maximum_separation = min(
+                math.pi,
+                arc.radius + other.radius + 1e-8,
+            )
+
+            if (
+                np.dot(
+                    arc.midpoint,
+                    other.midpoint,
+                )
+                < math.cos(maximum_separation)
+            ):
+                continue
+
+            yield other
+
+
+    @staticmethod
+    def _river_arcs(world):
+        arcs = []
+
+        for river_id, points in enumerate(
+            world.river_paths
+        ):
+            path = SourcePath(
+                points=points,
+                kind=BoundaryKind.RIVER,
+                source_id=river_id,
+            )
+
+            arcs.extend(path.arcs)
+
+        return arcs
+
+
+    def edge_separates_atoms(self, edge):
+        first_id, second_id = edge.halfedges
+
+        first_atom = self.halfedges[
+            first_id
+        ].atom_id
+
+        second_atom = self.halfedges[
+            second_id
+        ].atom_id
+
+        return (
+            first_atom is not None
+            and second_atom is not None
+            and first_atom != second_atom
         )
