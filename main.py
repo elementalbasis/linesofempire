@@ -370,8 +370,8 @@ while running:
             running = False
 
         # Place Voronoi points
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:
+        if event.type == pygame.MOUSEBUTTONDOWN and not io.want_capture_mouse:
+            if event.button == 1 and editor.tool == EditorTool.SEEDS:
                 point = camera.screen_to_sphere(*event.pos, width, height)
 
                 if point is not None:
