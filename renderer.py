@@ -5,6 +5,7 @@ from OpenGL.GL import GL_CLIP_DISTANCE0, GL_PROGRAM_POINT_SIZE
 from PIL import Image
 
 import config
+from editor import EditorLayer
 from common import (
         read_file,
         tangent_basis,
@@ -95,6 +96,10 @@ class Renderer:
         self.preview_outline_buffer = None
         self.preview_seed_vao = None
         self.preview_seed_buffer = None
+
+        self.voronoi_overlay_vaos = {}
+        self.voronoi_overlay_buffers = {}
+        self.voronoi_overlay_revision = 0
 
 
     # Load my custom OpenGL shaders
@@ -209,7 +214,7 @@ class Renderer:
             )
             self.cities.append((city_vao, row['Symbol']))
 
-    def render(self, camera, width, height):
+    def render(self, camera, width, height, editor = None):
         self.ctx.viewport = (0, 0, width, height)
 
         # Write camera data to buffer
@@ -240,6 +245,10 @@ class Renderer:
         if self.show_lakes:
             self.fill_program['u_color'].value = config.OCEAN_COLOR
             self.lakes_vao.render(mode = moderngl.TRIANGLES)
+
+        # Editor overlays belong above surface fills and below vector lines.
+        if editor is not None:
+            self.render_voronoi_selection(editor)
 
         # Enable line clipping
         self.ctx.enable_direct(GL_CLIP_DISTANCE0)
@@ -356,14 +365,14 @@ class Renderer:
             self.preview_region_vao.render(mode=moderngl.TRIANGLES)
 
             self.vector_program['u_color'].value = config.VORONOI_EDGE_COLOR
-            self.ctx.line_width = 2.0
+            self.ctx.line_width = config.VORONOI_PREVIEW_EDGE_THICKNESS
             self.preview_outline_vao.render(mode=moderngl.LINES)
 
             self.point_program['u_color'].value = config.VORONOI_SEED_COLOR
             self.point_program['u_point_size'].value = config.VORONOI_SEED_SIZE
             self.preview_seed_vao.render(mode=moderngl.POINTS)
 
-            self.ctx.disable(moderngl.BLEND)
+            #self.ctx.disable(moderngl.BLEND)
 
 
         # Disable line clipping before calling imgui
@@ -517,6 +526,7 @@ class Renderer:
 
 
     def update_voronoi(self, world):
+        self.invalidate_voronoi_overlays()
         for name in ('voronoi_seed_vao', 'voronoi_edge_vao'):
             vao = getattr(self, name)
             if vao is not None:
@@ -651,4 +661,96 @@ class Renderer:
             self.preview_seed_buffer,
             'in_pos',
         )
+
+
+
+    def invalidate_voronoi_overlays(self):
+        for vao in self.voronoi_overlay_vaos.values():
+            vao.release()
+
+        for buffer in self.voronoi_overlay_buffers.values():
+            buffer.release()
+
+        self.voronoi_overlay_vaos.clear()
+        self.voronoi_overlay_buffers.clear()
+
+
+    def _voronoi_overlay(self, region_id):
+        if region_id in self.voronoi_overlay_vaos:
+            return self.voronoi_overlay_vaos[region_id]
+
+        voronoi = self.world.voronoi
+
+        if not 0 <= region_id < len(voronoi.region_indices):
+            return None
+
+        indices = voronoi.region_indices[region_id]
+        points = np.asarray(
+            voronoi.vertices[indices],
+            dtype=np.float64,
+        )
+
+        if len(points) < 3:
+            return None
+
+        center = normalize(
+            np.asarray(voronoi.seed_vertices[region_id], dtype=np.float64)
+        )
+
+        triangles = []
+
+        for a, b in zip(points, np.roll(points, -1, axis=0)):
+            triangles.extend(
+                subdivide_spherical_triangle(
+                    center,
+                    a,
+                    b,
+                    limit=config.MAX_TRIANGLE_ARC,
+                )
+            )
+
+        if not triangles:
+            return None
+
+        vertices = np.asarray(triangles, dtype='f4')
+
+        buffer = self.ctx.buffer(vertices.tobytes())
+        vao = self.ctx.simple_vertex_array(
+            self.fill_program,
+            buffer,
+            'in_pos',
+        )
+
+        self.voronoi_overlay_buffers[region_id] = buffer
+        self.voronoi_overlay_vaos[region_id] = vao
+
+        return vao
+
+
+    def render_voronoi_selection(self, editor):
+        if editor.layer != EditorLayer.VORONOI:
+            return
+
+        # Persistent selection
+        self.fill_program['u_color'].value = (
+            config.REGION_SELECTED_COLOR
+        )
+
+        for region_id in sorted(editor.selection):
+            vao = self._voronoi_overlay(region_id)
+
+            if vao is not None:
+                vao.render(mode=moderngl.TRIANGLES)
+
+        # Temporary hover, subordinate to selection
+        hovered = editor.hovered[editor.layer]
+
+        if hovered is not None and hovered not in editor.selection:
+            vao = self._voronoi_overlay(hovered)
+
+            if vao is not None:
+                self.fill_program['u_color'].value = (
+                    config.REGION_HOVER_COLOR
+                )
+                vao.render(mode=moderngl.TRIANGLES)
 

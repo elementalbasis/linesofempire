@@ -125,3 +125,41 @@ class Voronoi:
             dtype='f4',
         )
 
+
+
+    def region_at(self, point):
+        if point is None or len(self.seeds) < 4:
+            return None
+
+        seeds = self.seed_vertices.astype(np.float64)
+        point = np.asarray(point, dtype=np.float64)
+
+        return int(np.argmax(seeds @ point))
+
+
+    def regions_in_rectangle(self, rectangle, camera, width, height):
+        if len(self.seeds) < 4:
+            return set()
+
+        x1, y1, x2, y2 = rectangle
+        east, north, forward = camera.basis()
+
+        seeds = self.seed_vertices.astype(np.float64)
+
+        # Orthographic projection, matching camera.py.
+        x = width / 2 + camera.zoom * (seeds @ east)
+        y = height / 2 - camera.zoom * (seeds @ north)
+
+        # Exclude seeds on the back of the globe.
+        visible = (seeds @ forward) >= 0
+
+        inside = (
+            visible
+            & (x >= x1)
+            & (x <= x2)
+            & (y >= y1)
+            & (y <= y2)
+        )
+
+        return set(np.flatnonzero(inside).tolist())
+
