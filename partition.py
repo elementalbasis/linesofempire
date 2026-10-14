@@ -1664,3 +1664,21 @@ class Partition:
             and second_region is not None
             and first_region != second_region
         )
+
+    def region_at(self, point):
+        if point is None:
+            return None
+
+        for atom in self.atoms:
+            points = [
+                self.vertices[vertex_id].point
+                for vertex_id in atom.vertex_ids
+            ]
+
+            if spherical_polygon_contains(
+                points,
+                point,
+            ):
+                return atom.region_id
+
+        return None

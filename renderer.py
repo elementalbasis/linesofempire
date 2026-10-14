@@ -5,7 +5,12 @@ from OpenGL.GL import GL_CLIP_DISTANCE0, GL_PROGRAM_POINT_SIZE
 from PIL import Image
 
 import config
-from common import read_file, tangent_basis
+from common import (
+        read_file,
+        tangent_basis,
+        normalize,
+        subdivide_spherical_triangle,
+        )
 
 GLOBE_VERTEX_SHADER = 'shaders/globe.vert'
 HORIZON_GEOMETRY_SHADER = 'shaders/horizon.geom'
@@ -338,12 +343,10 @@ class Renderer:
             *tl, 0.0, 1.0,
             ], dtype='f4')
 
-    def update_highlight(self, region):
-        # Nothing changed.
-        if region is self.highlight_region:
+    def update_highlight(self, region_id):
+        if region_id == self.highlight_region:
             return
 
-        # Release old GPU objects.
         if self.highlight_vao is not None:
             self.highlight_vao.release()
             self.highlight_vao = None
@@ -352,25 +355,67 @@ class Renderer:
             self.highlight_buffer.release()
             self.highlight_buffer = None
 
-        self.highlight_region = region
+        self.highlight_region = region_id
 
-        if region is None:
+        if region_id is None:
             return
 
-        # THIS is when triangulation happens.
-        vertices = region.vertices
+        partition = self.world.partition
 
-        if not len(vertices):
+        triangles = []
+
+        for atom in partition.atoms:
+            if atom.region_id != region_id:
+                continue
+
+            points = np.asarray(
+                [
+                    partition.vertices[
+                        vertex_id
+                    ].point
+                    for vertex_id in atom.vertex_ids
+                ],
+                dtype=np.float64,
+            )
+
+            if len(points) < 3:
+                continue
+
+            center = normalize(
+                points.mean(axis=0)
+            )
+
+            for a, b in zip(
+                points,
+                np.roll(points, -1, axis=0),
+            ):
+                triangles.extend(
+                    subdivide_spherical_triangle(
+                        center,
+                        a,
+                        b,
+                        limit=config.MAX_TRIANGLE_ARC,
+                    )
+                )
+
+        if not triangles:
             return
+
+        vertices = np.asarray(
+            triangles,
+            dtype='f4',
+        )
 
         self.highlight_buffer = self.ctx.buffer(
             vertices.tobytes()
         )
 
-        self.highlight_vao = self.ctx.simple_vertex_array(
-            self.fill_program,
-            self.highlight_buffer,
-            'in_pos',
+        self.highlight_vao = (
+            self.ctx.simple_vertex_array(
+                self.fill_program,
+                self.highlight_buffer,
+                'in_pos',
+            )
         )
 
     def update_voronoi(self, world):

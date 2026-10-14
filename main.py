@@ -348,7 +348,13 @@ while running:
     # Handle events
     mouse = pygame.mouse.get_pos()
     mouse_pos = camera.screen_to_sphere(*mouse, width, height)
-    world.hovered_region = world.region_at(mouse_pos)
+    #world.hovered_region = world.region_at(mouse_pos)
+    if world.partition.atoms:
+        world.hovered_region = (
+            world.partition.region_at(mouse_pos)
+        )
+    else:
+        world.hovered_region = None
     for event in pygame.event.get():
         # Pass the event to ImGui
         ui_renderer.process_event(event)
