@@ -9,6 +9,7 @@ import numpy as np
 import pygame
 
 import config
+from navigation import NavigationController
 
 
 class EditorTool(Enum):
@@ -33,6 +34,7 @@ class EditorState:
         self.selection_end = None
         self.dragging_seed_id = None
         self.dragging_seed_point = None
+        self.navigation = NavigationController()
 
     @property
     def selection(self):
@@ -86,6 +88,8 @@ class EditorState:
 
     def handle_event(self, event, world, camera, renderer, width, height,
                      capture_mouse=False, capture_keyboard=False):
+        self.navigation.handle_event(event, camera, width, height, self.tool, capture_mouse)
+
         if event.type == pygame.WINDOWFOCUSLOST:
             self.cancel_rectangle()
             self.cancel_drag(renderer)

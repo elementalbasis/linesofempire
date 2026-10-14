@@ -42,6 +42,79 @@ class Camera:
         # Constrain zoom
         self.zoom = max(min_zoom(width, height), min(max_zoom(width, height), self.zoom))
 
+    def zoom_at(self, cursor, steps, width, height):
+        """Zoom about the geographic location under the pointer."""
+        if steps == 0:
+            return
+        anchor = self.screen_to_sphere(*cursor, width, height)
+        self.zoom = max(
+            min_zoom(width, height),
+            min(max_zoom(width, height), self.zoom * config.ZOOM_WHEEL_FACTOR ** steps),
+        )
+        if anchor is not None:
+            self.align_point_to_screen(anchor, cursor, width, height)
+
+    def align_point_to_screen(self, anchor, cursor, width, height):
+        """Reorient the globe to keep one world-space point beneath the cursor.
+
+        Solve the two-degree-of-freedom orthographic projection. A bounded,
+        damped Newton iteration avoids large jumps near the horizon and poles.
+        """
+        target_x, target_y = cursor
+        # A sphere cannot project to a point outside its screen-space disk.
+        dx = target_x - width / 2
+        dy = target_y - height / 2
+        radius = math.hypot(dx, dy)
+        if radius > self.zoom:
+            scale = self.zoom / radius
+            target_x = width / 2 + dx * scale
+            target_y = height / 2 + dy * scale
+
+        anchor = np.asarray(anchor, dtype=np.float64)
+        for _ in range(config.NAVIGATION_SOLVER_ITERATIONS):
+            east, north, forward = self.basis()
+            east_dot = float(np.dot(anchor, east))
+            north_dot = float(np.dot(anchor, north))
+            forward_dot = float(np.dot(anchor, forward))
+            error = np.array([
+                target_x - width / 2 - self.zoom * east_dot,
+                target_y - height / 2 + self.zoom * north_dot,
+            ])
+            if np.linalg.norm(error) <= config.NAVIGATION_SOLVER_TOLERANCE:
+                break
+
+            lat = math.radians(self.lat)
+            lon = math.radians(self.lon)
+            radial = anchor[0] * math.cos(lon) + anchor[1] * math.sin(lon)
+            # Derivatives w.r.t. longitude and latitude in radians.
+            jacobian = self.zoom * np.array([
+                [-radial, 0.0],
+                [math.sin(lat) * east_dot, forward_dot],
+            ])
+            delta = np.linalg.lstsq(jacobian, error, rcond=None)[0]
+            magnitude = np.linalg.norm(delta)
+            if magnitude > config.NAVIGATION_MAX_STEP:
+                delta *= config.NAVIGATION_MAX_STEP / magnitude
+
+            old_lon, old_lat = self.lon, self.lat
+            old_error = np.linalg.norm(error)
+            accepted = False
+            for n in range(config.NAVIGATION_LINE_SEARCH_STEPS):
+                step = 0.5 ** n
+                self.lon = (old_lon + math.degrees(delta[0] * step) + 180) % 360 - 180
+                self.lat = max(-90.0, min(90.0, old_lat + math.degrees(delta[1] * step)))
+                e, nvec, _ = self.basis()
+                residual = np.array([
+                    target_x - width / 2 - self.zoom * np.dot(anchor, e),
+                    target_y - height / 2 + self.zoom * np.dot(anchor, nvec),
+                ])
+                if np.linalg.norm(residual) < old_error:
+                    accepted = True
+                    break
+            if not accepted:
+                self.lon, self.lat = old_lon, old_lat
+                break
+
     def basis(self):
         return tangent_basis(self.lon, self.lat)
 
