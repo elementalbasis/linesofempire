@@ -31,6 +31,13 @@ BOUNDARY_WEIGHT = {
     BoundaryKind.SNAP: 0.0,
 }
 
+LAMBDA_CONTACT = 1.0
+LAMBDA_BOUNDARY = 1.0
+
+# Implement these once the required geometry/state exists.
+LAMBDA_REOCK = 0.0
+LAMBDA_TYPE = 0.0
+
 class SourcePath:
     def __init__(
         self,
@@ -358,7 +365,7 @@ class Partition:
     def _node_arcs(
         self,
         arcs,
-        snap_tolerance=math.radians(0.1),
+        snap_tolerance=math.radians(0.05),
     ):
         split_points = [
             [arc.start, arc.end]
@@ -783,6 +790,10 @@ class Partition:
         self._assign_roots(world)
         self._build_components()
 
+        self._resolve_orphans()
+        self._assign_component_regions()
+
+        '''
         roots = sum(
             component.is_root
             for component
@@ -807,6 +818,7 @@ class Partition:
             f'{orphans} orphans'
             f'Euler = {euler}'
         )
+        '''
 
 
     @staticmethod
@@ -1233,4 +1245,422 @@ class Partition:
                 arc.terminal_end
                 and same_point(point, arc.end)
             )
+        )
+
+
+    def _component_metrics(self):
+        atom_to_component = {}
+
+        for component in self.components:
+            for atom_id in component.atom_ids:
+                atom_to_component[atom_id] = component.id
+
+        areas = {
+            component.id: sum(
+                self.atoms[atom_id].area
+                for atom_id in component.atom_ids
+            )
+            for component in self.components
+        }
+
+        perimeters = {
+            component.id: 0.0
+            for component in self.components
+        }
+
+        adjacency = {
+            component.id: {}
+            for component in self.components
+        }
+
+        for edge in self.edges:
+            if (
+                not edge.active
+                or edge.halfedges is None
+            ):
+                continue
+
+            first_id, second_id = edge.halfedges
+
+            atom_a = self.halfedges[
+                first_id
+            ].atom_id
+
+            atom_b = self.halfedges[
+                second_id
+            ].atom_id
+
+            component_a = (
+                atom_to_component.get(atom_a)
+                if atom_a is not None
+                else None
+            )
+
+            component_b = (
+                atom_to_component.get(atom_b)
+                if atom_b is not None
+                else None
+            )
+
+            # Internal edge of one component.
+            if (
+                component_a is not None
+                and component_a == component_b
+            ):
+                continue
+
+            if component_a is not None:
+                perimeters[component_a] += edge.length
+
+            if component_b is not None:
+                perimeters[component_b] += edge.length
+
+            if (
+                component_a is None
+                or component_b is None
+            ):
+                continue
+
+            boundary_weight = max(
+                BOUNDARY_WEIGHT[kind]
+                for kind in edge.kinds
+            )
+
+            for source, target in (
+                (component_a, component_b),
+                (component_b, component_a),
+            ):
+                contact = adjacency[
+                    source
+                ].setdefault(
+                    target,
+                    {
+                        'length': 0.0,
+                        'weighted_length': 0.0,
+                    },
+                )
+
+                contact['length'] += edge.length
+
+                contact['weighted_length'] += (
+                    boundary_weight
+                    * edge.length
+                )
+
+        return (
+            areas,
+            perimeters,
+            adjacency,
+        )
+
+    def _energy(
+        self,
+        orphan_id,
+        candidate_id,
+        areas,
+        perimeters,
+        adjacency,
+    ):
+        contact = adjacency[
+            orphan_id
+        ][candidate_id]
+
+        perimeter = max(
+            perimeters[orphan_id],
+            1e-12,
+        )
+
+        contact_energy = (
+            -LAMBDA_CONTACT
+            * contact['length']
+            / perimeter
+        )
+
+        boundary_energy = (
+            LAMBDA_BOUNDARY
+            * contact['weighted_length']
+            / perimeter
+        )
+
+        # Hooks for the next two terms.
+        reock_energy = 0.0
+        type_energy = 0.0
+
+        return (
+            contact_energy
+            + boundary_energy
+            + reock_energy
+            + type_energy
+        )
+
+    def _choose_parents(self):
+        (
+            areas,
+            perimeters,
+            adjacency,
+        ) = self._component_metrics()
+
+        for component in self.components:
+            component.parent = None
+
+        for component in self.components:
+            if component.is_root:
+                continue
+
+            neighbors = adjacency[
+                component.id
+            ]
+
+            if not neighbors:
+                continue
+
+            component.parent = min(
+                neighbors,
+                key=lambda candidate_id: (
+                    self._energy(
+                        component.id,
+                        candidate_id,
+                        areas,
+                        perimeters,
+                        adjacency,
+                    ),
+                    candidate_id,
+                ),
+            )
+
+    def _trace_parent(self, start_id):
+        components = {
+            component.id: component
+            for component in self.components
+        }
+
+        path = []
+        positions = {}
+
+        current_id = start_id
+
+        while True:
+            component = components[
+                current_id
+            ]
+
+            if component.is_root:
+                return {
+                    'root': current_id,
+                    'cycle': None,
+                }
+
+            if component.parent is None:
+                return {
+                    'root': None,
+                    'cycle': None,
+                }
+
+            if current_id in positions:
+                cycle_start = positions[
+                    current_id
+                ]
+
+                return {
+                    'root': None,
+                    'cycle': tuple(
+                        path[cycle_start:]
+                    ),
+                }
+
+            positions[current_id] = len(path)
+            path.append(current_id)
+
+            current_id = component.parent
+
+    def _collapse_parent_graph(self):
+        components = {
+            component.id: component
+            for component in self.components
+        }
+
+        root_groups = {
+            component.id: {component.id}
+            for component in self.components
+            if component.is_root
+        }
+
+        cycles = set()
+
+        for component in self.components:
+            if component.is_root:
+                continue
+
+            result = self._trace_parent(
+                component.id
+            )
+
+            root_id = result['root']
+
+            if root_id is not None:
+                root_groups[
+                    root_id
+                ].add(component.id)
+
+                continue
+
+            cycle = result['cycle']
+
+            if cycle is not None:
+                cycles.add(
+                    tuple(sorted(cycle))
+                )
+
+        consumed = set()
+        new_groups = []
+
+        # Everything whose parent-chain reaches a root
+        # becomes part of that rooted component.
+        for root_id, component_ids in root_groups.items():
+            new_groups.append((
+                component_ids,
+                components[root_id].region_id,
+            ))
+
+            consumed.update(component_ids)
+
+        # Only the actual cyclic cores are merged.
+        # Tails feeding cycles remain free to choose again.
+        for cycle in cycles:
+            cycle_ids = set(cycle)
+
+            if cycle_ids & consumed:
+                continue
+
+            new_groups.append((
+                cycle_ids,
+                None,
+            ))
+
+            consumed.update(cycle_ids)
+
+        # Any unresolved non-cycle orphan remains by itself.
+        for component in self.components:
+            if component.id in consumed:
+                continue
+
+            new_groups.append((
+                {component.id},
+                component.region_id,
+            ))
+
+        changed = (
+            len(new_groups)
+            < len(self.components)
+        )
+
+        new_components = []
+
+        for component_ids, region_id in new_groups:
+            atom_ids = set()
+
+            for component_id in component_ids:
+                atom_ids.update(
+                    components[
+                        component_id
+                    ].atom_ids
+                )
+
+            new_components.append(
+                Component(
+                    component_id=len(
+                        new_components
+                    ),
+                    atom_ids=atom_ids,
+                    region_id=region_id,
+                )
+            )
+
+        self.components = new_components
+
+        return changed
+
+    def _resolve_orphans(self):
+        pass_number = 0
+
+        while True:
+            orphan_count = sum(
+                not component.is_root
+                for component in self.components
+            )
+
+            if orphan_count == 0:
+                return
+
+            pass_number += 1
+
+            self._choose_parents()
+
+            changed = (
+                self._collapse_parent_graph()
+            )
+
+            new_orphan_count = sum(
+                not component.is_root
+                for component in self.components
+            )
+
+            print(
+                f'energy pass {pass_number}: '
+                f'{orphan_count} -> '
+                f'{new_orphan_count} orphans'
+            )
+
+            if not changed:
+                raise RuntimeError(
+                    'Energy resolution stalled with '
+                    f'{new_orphan_count} orphans.'
+                )
+
+    def _assign_component_regions(self):
+        for component in self.components:
+            if component.region_id is None:
+                continue
+
+            for atom_id in component.atom_ids:
+                self.atoms[
+                    atom_id
+                ].region_id = component.region_id
+
+    def edge_separates_regions(self, edge):
+        if (
+            not edge.active
+            or edge.halfedges is None
+        ):
+            return False
+
+        first_id, second_id = edge.halfedges
+
+        first_atom_id = self.halfedges[
+            first_id
+        ].atom_id
+
+        second_atom_id = self.halfedges[
+            second_id
+        ].atom_id
+
+        if (
+            first_atom_id is None
+            or second_atom_id is None
+            or first_atom_id == second_atom_id
+        ):
+            return False
+
+        first_region = self.atoms[
+            first_atom_id
+        ].region_id
+
+        second_region = self.atoms[
+            second_atom_id
+        ].region_id
+
+        return (
+            first_region is not None
+            and second_region is not None
+            and first_region != second_region
         )

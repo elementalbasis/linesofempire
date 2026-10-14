@@ -298,3 +298,31 @@ class World:
                     paths.append(points)
 
         return paths
+
+    @property
+    def region_edge_vertices(self):
+        vertices = []
+
+        partition = self.partition
+
+        for edge in partition.edges:
+            if not partition.edge_separates_regions(edge):
+                continue
+
+            start = partition.vertices[
+                edge.vertex_a
+            ].point
+
+            end = partition.vertices[
+                edge.vertex_b
+            ].point
+
+            vertices.extend((
+                start,
+                end,
+            ))
+
+        return np.asarray(
+            vertices,
+            dtype='f4',
+        )

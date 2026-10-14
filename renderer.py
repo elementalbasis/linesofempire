@@ -34,6 +34,8 @@ class Renderer:
         self.show_cities = True
         self.show_generated_borders = True
         self.show_regions = True
+        self.show_atom_edges = True
+        self.show_region_edges = True
 
         # OpenGL context
         self.ctx = moderngl.create_context()
@@ -55,6 +57,8 @@ class Renderer:
         self.generated_borders_vao = None
         self.show_atom_edges = True
         self.atom_edges_vao = None
+        self.show_region_edges = True
+        self.region_edges_vao = None
 
         self.world = world
         #self.region_vaos = []
@@ -276,6 +280,25 @@ class Renderer:
                 mode=moderngl.LINES
             )
 
+
+        # Final regions
+
+        if (
+            self.show_region_edges
+            and self.region_edges_vao is not None
+        ):
+            self.vector_program['u_color'].value = (
+                config.REGION_EDGE_COLOR
+            )
+
+            self.ctx.line_width = (
+                config.REGION_EDGE_THICKNESS
+            )
+
+            self.region_edges_vao.render(
+                mode=moderngl.LINES
+            )
+
         # Disable line clipping before calling imgui
         self.ctx.disable_direct(GL_CLIP_DISTANCE0)
 
@@ -389,4 +412,19 @@ class Renderer:
             self.atom_edges_vao = self._create_position_vao(
                 vertices,
                 self.vector_program,
+            )
+
+    def update_regions(self, world):
+        if self.region_edges_vao is not None:
+            self.region_edges_vao.release()
+            self.region_edges_vao = None
+
+        vertices = world.region_edge_vertices
+
+        if len(vertices):
+            self.region_edges_vao = (
+                self._create_position_vao(
+                    vertices,
+                    self.vector_program,
+                )
             )

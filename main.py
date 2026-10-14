@@ -176,11 +176,13 @@ def draw_menu_bar(editor, world, renderer):
             world.generate_borders()
             renderer.update_generated_borders(world)
             renderer.update_atoms(world)
+            renderer.update_regions(world)
 
         if imgui.menu_item('Reroll Unfrozen')[0]:
             world.reroll_borders()
             renderer.update_generated_borders(world)
             renderer.update_atoms(world)
+            renderer.update_regions(world)
 
         if imgui.menu_item('Reroll Selected')[0]:
             pass
@@ -191,6 +193,7 @@ def draw_menu_bar(editor, world, renderer):
             world.clear_borders()
             renderer.update_generated_borders(world)
             renderer.update_atoms(world)
+            renderer.update_regions(world)
 
         imgui.end_menu()
 
@@ -280,6 +283,18 @@ def draw_menu_bar(editor, world, renderer):
             'Region Fill',
             '',
             renderer.show_regions,
+        )
+
+        _, renderer.show_atom_edges = imgui.menu_item(
+            'Atom Edges',
+            '',
+            renderer.show_atom_edges,
+        )
+
+        _, renderer.show_region_edges = imgui.menu_item(
+            'Final Region Edges',
+            '',
+            renderer.show_region_edges,
         )
 
         imgui.end_menu()
