@@ -8,7 +8,7 @@ from camera import Camera
 from world import World
 from renderer import Renderer
 from editor import EditorState
-from ui import draw_menu_bar, draw_selection_rectangle
+from ui import draw_menu_bar, draw_selection_rectangle, draw_file_dialogs
 
 
 class UIRenderer(ProgrammablePipelineRenderer, PygameRenderer):
@@ -52,6 +52,7 @@ def main():
             io.display_size = width, height
             imgui.new_frame()
             draw_menu_bar(editor, world, renderer)
+            draw_file_dialogs(editor, world, renderer)
             editor.update_hover(
                 pygame.mouse.get_pos(), world, camera, width, height,
                 io.want_capture_mouse,

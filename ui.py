@@ -2,6 +2,88 @@ import imgui
 
 import config
 from editor import EditorTool, EditorLayer
+from seed_io import export_all_seeds, export_selected_seeds, load_seeds
+
+
+class SeedFileDialog:
+    """Single save/load modal; saving favors the current Voronoi selection."""
+
+    def __init__(self):
+        self.action = None
+        self.pending = False
+        self.filename = config.SEED_FILE_DEFAULT
+        self.error = ''
+
+    def request(self, action):
+        self.action = action
+        self.pending = True
+        self.filename = config.SEED_FILE_DEFAULT
+        self.error = ''
+
+    def draw(self, editor, world, renderer):
+        if self.action is None:
+            return
+
+        title = 'Load Seeds' if self.action == 'load' else 'Save Seeds'
+        if self.pending:
+            imgui.open_popup(title)
+            self.pending = False
+
+        opened, _ = imgui.begin_popup_modal(title)
+        if not opened:
+            return
+
+        _, self.filename = imgui.input_text(
+            'Path', self.filename, config.SEED_FILE_PATH_MAX_LENGTH
+        )
+
+        if self.action == 'save':
+            selected = editor.selected[EditorLayer.VORONOI]
+            count = len(selected) if selected else len(world.voronoi.seeds)
+            scope = 'selected' if selected else 'all'
+            imgui.text(f'Saving {count} {scope} Voronoi seeds')
+        else:
+            imgui.text('Loading replaces all current Voronoi seeds.')
+
+        if imgui.button('Load' if self.action == 'load' else 'Save'):
+            try:
+                if self.action == 'load':
+                    seeds = load_seeds(self.filename)
+                    world.replace_voronoi_seeds(seeds)
+                    editor.cancel_drag(renderer)
+                    editor.cancel_rectangle()
+                    editor.selected[EditorLayer.VORONOI].clear()
+                    editor.hovered[EditorLayer.VORONOI] = None
+                    editor._refresh_geometry(world, renderer)
+                else:
+                    selected = editor.selected[EditorLayer.VORONOI]
+                    if selected:
+                        export_selected_seeds(world.voronoi, selected, self.filename)
+                    else:
+                        export_all_seeds(world.voronoi, self.filename)
+            except (OSError, ValueError, TypeError) as exc:
+                self.error = str(exc)
+            else:
+                imgui.close_current_popup()
+                self.action = None
+
+        imgui.same_line()
+        if imgui.button('Cancel'):
+            imgui.close_current_popup()
+            self.action = None
+
+        if self.error:
+            imgui.text_colored(self.error, 1.0, 0.35, 0.35)
+
+        imgui.end_popup()
+
+
+_seed_file_dialog = SeedFileDialog()
+
+
+def draw_file_dialogs(editor, world, renderer):
+    """Call every frame, outside the menu-bar scope."""
+    _seed_file_dialog.draw(editor, world, renderer)
 
 
 def draw_menu_bar(editor, world, renderer):
@@ -19,10 +101,10 @@ def draw_menu_bar(editor, world, renderer):
         imgui.separator()
 
         if imgui.menu_item('Load Seeds...')[0]:
-            pass
+            _seed_file_dialog.request('load')
 
         if imgui.menu_item('Save Seeds...')[0]:
-            pass
+            _seed_file_dialog.request('save')
 
         if imgui.menu_item('Load Regions...')[0]:
             pass

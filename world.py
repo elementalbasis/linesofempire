@@ -111,6 +111,20 @@ class World:
         self.partition.clear()
         self._rebuild_regions_from_voronoi()
 
+    def replace_voronoi_seeds(self, seeds):
+        """Atomically replace generators and invalidate derived geography."""
+        previous = self.voronoi.seeds
+        self.voronoi.seeds = list(seeds)
+        try:
+            self.voronoi.rebuild()
+        except Exception:
+            self.voronoi.seeds = previous
+            self.voronoi.rebuild()
+            raise
+        self.borders = {}
+        self.partition.clear()
+        self._rebuild_regions_from_voronoi()
+
     def region_at(self, point):
         if point is None:
             return None
