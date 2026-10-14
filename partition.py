@@ -1,7 +1,9 @@
 import math
 import numpy as np
 from enum import Enum, auto
-from scipy.spatial import cKDTree
+from scipy.spatial import cKDTree, ConvexHull, QhullError
+
+from shapely import contains_xy, union_all
 
 from common import angular_distance, normalize
 from spherical import (
@@ -23,6 +25,11 @@ class BoundaryKind(Enum):
     SNAP = auto()
 
 
+class SurfaceType(Enum):
+    LAND = auto()
+    SEA = auto()
+
+
 BOUNDARY_WEIGHT = {
     BoundaryKind.VORONOI: 1.0,
     BoundaryKind.RIVER: 2.0,
@@ -32,11 +39,9 @@ BOUNDARY_WEIGHT = {
 }
 
 LAMBDA_CONTACT = 1.0
+LAMBDA_REOCK = 1.0
+LAMBDA_TYPE = 1.0
 LAMBDA_BOUNDARY = 1.0
-
-# Implement these once the required geometry/state exists.
-LAMBDA_REOCK = 0.0
-LAMBDA_TYPE = 0.0
 
 class SourcePath:
     def __init__(
@@ -241,6 +246,9 @@ class Partition:
         self.atoms = []
         self.components = []
 
+        self.region_surface_types = {}
+        self._land_domain = None
+
         self._vertex_lookup = {}
         self._edge_lookup = {}
 
@@ -251,6 +259,8 @@ class Partition:
 
         self.atoms = []
         self.components = []
+
+        self.region_surface_types = {}
 
         self._vertex_lookup = {}
         self._edge_lookup = {}
@@ -690,6 +700,140 @@ class Partition:
                     halfedge_id
                 ].atom_id = atom_id
 
+    def _atom_probe_point(self, atom):
+        halfedge = self.halfedges[
+            atom.halfedge_ids[0]
+        ]
+
+        start = self.vertices[
+            halfedge.origin
+        ].point
+
+        end = self.vertices[
+            halfedge.destination
+        ].point
+
+        midpoint = normalize(
+            start + end
+        )
+
+        # The face walker keeps the atom on the left side of each
+        # directed half-edge.  The great-circle normal therefore
+        # points from the boundary into the atom.
+        left = np.cross(
+            start,
+            end,
+        )
+
+        left_length = np.linalg.norm(left)
+
+        if left_length < 1e-12:
+            return midpoint
+
+        left /= left_length
+
+        edge_length = angular_distance(
+            start,
+            end,
+        )
+
+        epsilon = min(
+            1e-5,
+            0.1 * edge_length,
+        )
+
+        return normalize(
+            midpoint
+            + math.tan(epsilon) * left
+        )
+
+    def _land_mask(self, world, points):
+        points = np.asarray(
+            points,
+            dtype=np.float64,
+        )
+
+        if not len(points):
+            return np.empty(
+                0,
+                dtype=bool,
+            )
+
+        if self._land_domain is None:
+            self._land_domain = union_all(
+                world.land_geometries
+            )
+
+        lon = np.degrees(
+            np.arctan2(
+                points[:, 1],
+                points[:, 0],
+            )
+        )
+
+        lat = np.degrees(
+            np.arcsin(
+                np.clip(
+                    points[:, 2],
+                    -1.0,
+                    1.0,
+                )
+            )
+        )
+
+        return np.asarray(
+            contains_xy(
+                self._land_domain,
+                lon,
+                lat,
+            ),
+            dtype=bool,
+        )
+
+    def _assign_surface_types(self, world):
+        atom_probes = np.asarray(
+            [
+                self._atom_probe_point(atom)
+                for atom in self.atoms
+            ],
+            dtype=np.float64,
+        )
+
+        atom_is_land = self._land_mask(
+            world,
+            atom_probes,
+        )
+
+        for atom, is_land in zip(
+            self.atoms,
+            atom_is_land,
+        ):
+            atom.surface_type = (
+                SurfaceType.LAND
+                if is_land
+                else SurfaceType.SEA
+            )
+
+        seed_vertices = np.asarray(
+            world.voronoi.seed_vertices,
+            dtype=np.float64,
+        )
+
+        seed_is_land = self._land_mask(
+            world,
+            seed_vertices,
+        )
+
+        self.region_surface_types = {
+            region_id: (
+                SurfaceType.LAND
+                if is_land
+                else SurfaceType.SEA
+            )
+            for region_id, is_land
+            in enumerate(seed_is_land)
+        }
+
     def _assign_roots(self, world):
         for region_id, seed in enumerate(
             world.voronoi.seed_vertices
@@ -787,6 +931,7 @@ class Partition:
         )
 
         self._build_arrangement(arcs)
+        self._assign_surface_types(world)
         self._assign_roots(world)
         self._build_components()
 
@@ -1248,30 +1393,312 @@ class Partition:
         )
 
 
+    @staticmethod
+    def _closest_point_on_triangle_to_origin(
+        a,
+        b,
+        c,
+    ):
+        # Ericson-style closest-point test, specialized to the origin.
+        ab = b - a
+        ac = c - a
+        ap = -a
+
+        d1 = np.dot(ab, ap)
+        d2 = np.dot(ac, ap)
+
+        if d1 <= 0.0 and d2 <= 0.0:
+            return a
+
+        bp = -b
+        d3 = np.dot(ab, bp)
+        d4 = np.dot(ac, bp)
+
+        if d3 >= 0.0 and d4 <= d3:
+            return b
+
+        vc = d1 * d4 - d3 * d2
+
+        if (
+            vc <= 0.0
+            and d1 >= 0.0
+            and d3 <= 0.0
+        ):
+            v = d1 / (d1 - d3)
+            return a + v * ab
+
+        cp = -c
+        d5 = np.dot(ab, cp)
+        d6 = np.dot(ac, cp)
+
+        if d6 >= 0.0 and d5 <= d6:
+            return c
+
+        vb = d5 * d2 - d1 * d6
+
+        if (
+            vb <= 0.0
+            and d2 >= 0.0
+            and d6 <= 0.0
+        ):
+            w = d2 / (d2 - d6)
+            return a + w * ac
+
+        va = d3 * d6 - d5 * d4
+
+        if (
+            va <= 0.0
+            and d4 - d3 >= 0.0
+            and d5 - d6 >= 0.0
+        ):
+            w = (
+                (d4 - d3)
+                / (
+                    (d4 - d3)
+                    + (d5 - d6)
+                )
+            )
+
+            return b + w * (c - b)
+
+        denominator = 1.0 / (
+            va + vb + vc
+        )
+
+        v = vb * denominator
+        w = vc * denominator
+
+        return (
+            a
+            + v * ab
+            + w * ac
+        )
+
+    @staticmethod
+    def _fallback_cap_area(points):
+        center = points.mean(axis=0)
+        center_length = np.linalg.norm(center)
+
+        if center_length < 1e-12:
+            center = points[0]
+        else:
+            center /= center_length
+
+        cosine_radius = float(
+            np.min(points @ center)
+        )
+
+        cosine_radius = np.clip(
+            cosine_radius,
+            -1.0,
+            1.0,
+        )
+
+        return (
+            2.0
+            * math.pi
+            * (1.0 - cosine_radius)
+        )
+
+    @classmethod
+    def _minimum_enclosing_cap_area(
+        cls,
+        points,
+    ):
+        points = np.asarray(
+            points,
+            dtype=np.float64,
+        )
+
+        if not len(points):
+            return 0.0
+
+        points = np.unique(
+            np.round(
+                points,
+                decimals=12,
+            ),
+            axis=0,
+        )
+
+        lengths = np.linalg.norm(
+            points,
+            axis=1,
+            keepdims=True,
+        )
+
+        points = points / lengths
+        count = len(points)
+
+        if count == 1:
+            return 0.0
+
+        if count == 2:
+            closest = 0.5 * (
+                points[0]
+                + points[1]
+            )
+
+            cosine_radius = np.clip(
+                np.linalg.norm(closest),
+                0.0,
+                1.0,
+            )
+
+            return (
+                2.0
+                * math.pi
+                * (1.0 - cosine_radius)
+            )
+
+        if count == 3:
+            closest = (
+                cls._closest_point_on_triangle_to_origin(
+                    points[0],
+                    points[1],
+                    points[2],
+                )
+            )
+
+            cosine_radius = np.clip(
+                np.linalg.norm(closest),
+                0.0,
+                1.0,
+            )
+
+            return (
+                2.0
+                * math.pi
+                * (1.0 - cosine_radius)
+            )
+
+        try:
+            hull = ConvexHull(points)
+        except QhullError:
+            return cls._fallback_cap_area(
+                points
+            )
+
+        # For the strategic regions we expect the point set to fit in
+        # a hemisphere.  If the origin lies in the Euclidean hull, use
+        # a conservative valid cap rather than forcing that assumption.
+        if np.all(
+            hull.equations[:, 3] <= 1e-12
+        ):
+            return cls._fallback_cap_area(
+                points
+            )
+
+        minimum_squared = math.inf
+
+        for simplex in hull.simplices:
+            a, b, c = points[simplex]
+
+            closest = (
+                cls._closest_point_on_triangle_to_origin(
+                    a,
+                    b,
+                    c,
+                )
+            )
+
+            squared = float(
+                np.dot(closest, closest)
+            )
+
+            minimum_squared = min(
+                minimum_squared,
+                squared,
+            )
+
+        cosine_radius = math.sqrt(
+            max(
+                0.0,
+                min(
+                    1.0,
+                    minimum_squared,
+                ),
+            )
+        )
+
+        return (
+            2.0
+            * math.pi
+            * (1.0 - cosine_radius)
+        )
+
+    def _reock_score(
+        self,
+        area,
+        vertex_ids,
+    ):
+        if not vertex_ids:
+            return 1.0
+
+        points = np.asarray(
+            [
+                self.vertices[
+                    vertex_id
+                ].point
+                for vertex_id in vertex_ids
+            ],
+            dtype=np.float64,
+        )
+
+        cap_area = (
+            self._minimum_enclosing_cap_area(
+                points
+            )
+        )
+
+        if cap_area <= 1e-12:
+            return 1.0
+
+        return float(
+            np.clip(
+                area / cap_area,
+                0.0,
+                1.0,
+            )
+        )
+
     def _component_metrics(self):
         atom_to_component = {}
+        areas = {}
+        land_areas = {}
+        perimeters = {}
+        adjacency = {}
+        boundary_vertices = {}
 
         for component in self.components:
+            component_id = component.id
+
+            areas[component_id] = 0.0
+            land_areas[component_id] = 0.0
+            perimeters[component_id] = 0.0
+            adjacency[component_id] = {}
+            boundary_vertices[component_id] = set()
+
             for atom_id in component.atom_ids:
-                atom_to_component[atom_id] = component.id
+                atom = self.atoms[
+                    atom_id
+                ]
 
-        areas = {
-            component.id: sum(
-                self.atoms[atom_id].area
-                for atom_id in component.atom_ids
-            )
-            for component in self.components
-        }
+                atom_to_component[
+                    atom_id
+                ] = component_id
 
-        perimeters = {
-            component.id: 0.0
-            for component in self.components
-        }
+                areas[
+                    component_id
+                ] += atom.area
 
-        adjacency = {
-            component.id: {}
-            for component in self.components
-        }
+                if (
+                    atom.surface_type
+                    == SurfaceType.LAND
+                ):
+                    land_areas[
+                        component_id
+                    ] += atom.area
 
         for edge in self.edges:
             if (
@@ -1280,7 +1707,9 @@ class Partition:
             ):
                 continue
 
-            first_id, second_id = edge.halfedges
+            first_id, second_id = (
+                edge.halfedges
+            )
 
             atom_a = self.halfedges[
                 first_id
@@ -1291,13 +1720,17 @@ class Partition:
             ].atom_id
 
             component_a = (
-                atom_to_component.get(atom_a)
+                atom_to_component.get(
+                    atom_a
+                )
                 if atom_a is not None
                 else None
             )
 
             component_b = (
-                atom_to_component.get(atom_b)
+                atom_to_component.get(
+                    atom_b
+                )
                 if atom_b is not None
                 else None
             )
@@ -1309,11 +1742,28 @@ class Partition:
             ):
                 continue
 
+            edge_vertices = (
+                edge.vertex_a,
+                edge.vertex_b,
+            )
+
             if component_a is not None:
-                perimeters[component_a] += edge.length
+                perimeters[
+                    component_a
+                ] += edge.length
+
+                boundary_vertices[
+                    component_a
+                ].update(edge_vertices)
 
             if component_b is not None:
-                perimeters[component_b] += edge.length
+                perimeters[
+                    component_b
+                ] += edge.length
+
+                boundary_vertices[
+                    component_b
+                ].update(edge_vertices)
 
             if (
                 component_a is None
@@ -1340,17 +1790,64 @@ class Partition:
                     },
                 )
 
-                contact['length'] += edge.length
+                contact[
+                    'length'
+                ] += edge.length
 
-                contact['weighted_length'] += (
+                contact[
+                    'weighted_length'
+                ] += (
                     boundary_weight
                     * edge.length
                 )
+
+        surface_types = {}
+        reock_scores = {}
+
+        for component in self.components:
+            component_id = component.id
+
+            if component.is_root:
+                surface_types[
+                    component_id
+                ] = self.region_surface_types[
+                    component.region_id
+                ]
+
+            else:
+                land_area = land_areas[
+                    component_id
+                ]
+
+                sea_area = (
+                    areas[component_id]
+                    - land_area
+                )
+
+                surface_types[
+                    component_id
+                ] = (
+                    SurfaceType.LAND
+                    if land_area >= sea_area
+                    else SurfaceType.SEA
+                )
+
+            reock_scores[
+                component_id
+            ] = self._reock_score(
+                areas[component_id],
+                boundary_vertices[
+                    component_id
+                ],
+            )
 
         return (
             areas,
             perimeters,
             adjacency,
+            boundary_vertices,
+            reock_scores,
+            surface_types,
         )
 
     def _energy(
@@ -1360,6 +1857,10 @@ class Partition:
         areas,
         perimeters,
         adjacency,
+        boundary_vertices,
+        reock_scores,
+        surface_types,
+        reock_union_cache,
     ):
         contact = adjacency[
             orphan_id
@@ -1382,15 +1883,67 @@ class Partition:
             / perimeter
         )
 
-        # Hooks for the next two terms.
-        reock_energy = 0.0
-        type_energy = 0.0
+        combined_area = (
+            areas[orphan_id]
+            + areas[candidate_id]
+        )
+
+        pair = tuple(sorted((
+            orphan_id,
+            candidate_id,
+        )))
+
+        if pair not in reock_union_cache:
+            combined_vertices = (
+                boundary_vertices[
+                    orphan_id
+                ]
+                | boundary_vertices[
+                    candidate_id
+                ]
+            )
+
+            reock_union_cache[
+                pair
+            ] = self._reock_score(
+                combined_area,
+                combined_vertices,
+            )
+
+        combined_reock = max(
+            reock_union_cache[pair],
+            1e-12,
+        )
+
+        reock_energy = (
+            LAMBDA_REOCK
+            * reock_scores[
+                candidate_id
+            ]
+            / combined_reock
+        )
+
+        sign = (
+            1.0
+            if (
+                surface_types[orphan_id]
+                == surface_types[candidate_id]
+            )
+            else -1.0
+        )
+
+        type_energy = (
+            -LAMBDA_TYPE
+            * areas[orphan_id]
+            / combined_area
+            * sign
+        )
 
         return (
             contact_energy
-            + boundary_energy
             + reock_energy
             + type_energy
+            + boundary_energy
         )
 
     def _choose_parents(self):
@@ -1398,7 +1951,12 @@ class Partition:
             areas,
             perimeters,
             adjacency,
+            boundary_vertices,
+            reock_scores,
+            surface_types,
         ) = self._component_metrics()
+
+        reock_union_cache = {}
 
         for component in self.components:
             component.parent = None
@@ -1423,6 +1981,10 @@ class Partition:
                         areas,
                         perimeters,
                         adjacency,
+                        boundary_vertices,
+                        reock_scores,
+                        surface_types,
+                        reock_union_cache,
                     ),
                     candidate_id,
                 ),
