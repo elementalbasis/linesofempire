@@ -15,6 +15,7 @@ from voronoi import Voronoi
 from region import Region
 from border import Border, generate_land_border
 from partition import Partition
+from georaster import GeoRaster
 
 CITIES_FILENAME = 'misc/cities.tsv'
 
@@ -73,6 +74,14 @@ class World:
         self.river_paths = self._line_paths(rivers)
         self.coastline_paths = self._line_paths(coastlines)
         self.admin_border_paths = self._line_paths(admin_borders)
+
+        self.georasters = [
+                GeoRaster(
+                    'assets/european_theater.tiff',
+                    grid_step = 16,
+                    ),
+                ]
+
 
     # Create ocean disk out of triangles
     def _load_ocean_vertices(self):

@@ -259,6 +259,12 @@ def draw_menu_bar(editor, world, renderer):
             renderer.show_cities,
         )
 
+        _, renderer.show_georaster = imgui.menu_item(
+            'GeoRaster',
+            '',
+            renderer.show_georaster,
+        )
+
         imgui.separator()
 
         _, renderer.show_voronoi_seeds = imgui.menu_item(

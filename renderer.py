@@ -21,6 +21,8 @@ VECTOR_VERTEX_SHADER = 'shaders/vector.vert'
 POINT_VERTEX_SHADER = 'shaders/point.vert'
 CITY_VERTEX_SHADER = 'shaders/city.vert'
 CITY_FRAGMENT_SHADER = 'shaders/city.frag'
+GEORASTER_VERTEX_SHADER = 'shaders/georaster.vert'
+GEORASTER_FRAGMENT_SHADER = 'shaders/georaster.frag'
 
 MINOR_CITY_TEXTURE = 'assets/circle.png'
 MAJOR_CITY_TEXTURE = 'assets/circle_dot.png'
@@ -37,6 +39,7 @@ class Renderer:
         self.show_voronoi_seeds = True
         self.show_voronoi_edges = True
         self.show_cities = True
+        self.show_georaster = False
         self.show_generated_borders = True
         self.show_regions = True
         self.show_atom_edges = True
@@ -71,6 +74,10 @@ class Renderer:
         self.highlight_buffer = None
         self.highlight_vao = None
 
+        self.georasters = [
+                self._load_georaster(raster) for raster in world.georasters
+                ]
+
         # Cities
         self.minor_city_texture = self._load_texture(MINOR_CITY_TEXTURE)
         self.major_city_texture = self._load_texture(MAJOR_CITY_TEXTURE)
@@ -92,6 +99,8 @@ class Renderer:
         point_vertex_shader = read_file(POINT_VERTEX_SHADER)
         city_vertex_shader = read_file(CITY_VERTEX_SHADER)
         city_fragment_shader = read_file(CITY_FRAGMENT_SHADER)
+        georaster_vertex_shader = read_file(GEORASTER_VERTEX_SHADER)
+        georaster_fragment_shader = read_file(GEORASTER_FRAGMENT_SHADER)
 
         self.vector_program = self.ctx.program(
             vertex_shader = vector_vertex_shader,
@@ -121,6 +130,11 @@ class Renderer:
                 fragment_shader = city_fragment_shader,
                 )
 
+        self.georaster_program = self.ctx.program(
+                vertex_shader = georaster_vertex_shader,
+                fragment_shader = georaster_fragment_shader,
+                )
+
     def _load_camera_buffer(self):
         # Create the shared camera Uniform Buffer Object
         self.camera_binding = 0
@@ -133,6 +147,7 @@ class Renderer:
                 self.screen_program,
                 self.point_program,
                 self.city_program,
+                self.georaster_program,
                 ]:
             program["Camera"].binding = self.camera_binding
 
@@ -245,6 +260,21 @@ class Renderer:
                 texture.use(location = 0)
                 self.city_program['u_texture'].value = 0
                 city_vao.render(mode = moderngl.TRIANGLES)
+
+        # GeoRaster
+        if self.show_georaster:
+            self.ctx.enable(moderngl.BLEND)
+            self.ctx.blend_func = (
+                moderngl.SRC_ALPHA,
+                moderngl.ONE_MINUS_SRC_ALPHA,
+            )
+            for texture, vao in self.georasters:
+                texture.use(location=0)
+                self.georaster_program['u_texture'].value = 0
+                self.georaster_program['u_opacity'].value = 0.5
+                vao.render(
+                    mode=moderngl.TRIANGLES
+                )
 
         # Voronoi edges
         if self.show_voronoi_edges and self.voronoi_edge_vao is not None:
@@ -418,6 +448,41 @@ class Renderer:
             )
         )
 
+    def _load_georaster(self, raster):
+        image = raster.image
+
+        texture = self.ctx.texture(
+            (
+                raster.width,
+                raster.height,
+            ),
+            4,
+            image.tobytes(),
+        )
+
+        texture.filter = (
+            moderngl.LINEAR,
+            moderngl.LINEAR,
+        )
+
+        buffer = self.ctx.buffer(
+            raster.vertices.tobytes()
+        )
+
+        vao = self.ctx.vertex_array(
+            self.georaster_program,
+            [
+                (
+                    buffer,
+                    '3f 2f',
+                    'in_pos',
+                    'in_uv',
+                )
+            ],
+        )
+
+        return texture, vao
+
     def update_voronoi(self, world):
         seed_vertices = world.voronoi.seed_vertices
         if len(seed_vertices):
@@ -473,3 +538,4 @@ class Renderer:
                     self.vector_program,
                 )
             )
+
