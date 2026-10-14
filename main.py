@@ -1,3 +1,5 @@
+import math
+import numpy as np
 import pygame
 from enum import Enum, auto
 
@@ -39,6 +41,9 @@ class EditorState:
 
         self.selected_seed_id = None
         self.selected_region_ids = set()
+
+        self.dragging_seed_id = None
+        self.dragging_seed_point = None
 
 
 
@@ -370,6 +375,7 @@ while running:
             running = False
 
         # Place Voronoi points
+        '''
         if event.type == pygame.MOUSEBUTTONDOWN and not io.want_capture_mouse:
             if event.button == 1 and editor.tool == EditorTool.SEEDS:
                 point = camera.screen_to_sphere(*event.pos, width, height)
@@ -382,6 +388,98 @@ while running:
             elif event.button == 3:
                 # TODO: remove seed
                 pass
+        '''
+
+
+        # Seed editing
+        if editor.tool == EditorTool.SEEDS:
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if not io.want_capture_mouse:
+                    point = camera.screen_to_sphere(
+                        *event.pos, width, height
+                    )
+
+                    if point is not None:
+                        # Approximate 10-pixel picking radius
+                        radius = math.asin(
+                            min(1.0, 10.0 / camera.zoom)
+                        )
+
+                        seed_id = world.voronoi.nearest_seed(
+                            point, radius
+                        )
+
+                        if event.button == 1:
+                            if seed_id is not None:
+                                # Begin dragging an existing seed
+                                editor.selected_seed_id = seed_id
+                                editor.dragging_seed_id = seed_id
+                                editor.dragging_seed_point = point
+
+                            else:
+                                # Add a new seed
+                                world.add_voronoi_seed(point)
+                                renderer.update_voronoi(world)
+                                renderer.update_generated_borders(world)
+                                renderer.update_atoms(world)
+                                renderer.update_regions(world)
+
+                        elif event.button == 3:
+                            if seed_id is not None:
+                                # Delete an existing seed
+                                world.remove_voronoi_seed(seed_id)
+                                editor.selected_seed_id = None
+
+                                renderer.update_voronoi(world)
+                                renderer.update_generated_borders(world)
+                                renderer.update_atoms(world)
+                                renderer.update_regions(world)
+
+            elif event.type == pygame.MOUSEMOTION:
+                if editor.dragging_seed_id is not None:
+                    point = camera.screen_to_sphere(
+                        *event.pos, width, height
+                    )
+
+                    if point is not None:
+                        editor.dragging_seed_point = point
+
+                        boundary = world.voronoi.preview_region(
+                            editor.dragging_seed_id, point
+                        )
+
+                        renderer.update_seed_preview(
+                            point, boundary
+                        )
+
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if event.button == 1:
+                    if editor.dragging_seed_id is not None:
+                        point = editor.dragging_seed_point
+                        index = editor.dragging_seed_id
+
+                        # Finish the preview before committing.
+                        renderer.clear_seed_preview()
+
+                        if point is not None:
+                            old_point = world.voronoi.seed_vertices[index]
+
+                            if not np.allclose(
+                                old_point, point, atol=1e-10
+                            ):
+                                world.move_voronoi_seed(
+                                    index, point
+                                )
+
+                                renderer.update_voronoi(world)
+                                renderer.update_generated_borders(world)
+                                renderer.update_atoms(world)
+                                renderer.update_regions(world)
+
+                        editor.dragging_seed_id = None
+                        editor.dragging_seed_point = None
+
 
     # Handle the menu bar
     #draw_menu_bar(renderer, ui_renderer)

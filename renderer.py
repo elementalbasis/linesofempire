@@ -88,6 +88,15 @@ class Renderer:
                 'circle+star': self.major_capital_texture,
                 }
 
+
+        self.preview_region_vao = None
+        self.preview_region_buffer = None
+        self.preview_outline_vao = None
+        self.preview_outline_buffer = None
+        self.preview_seed_vao = None
+        self.preview_seed_buffer = None
+
+
     # Load my custom OpenGL shaders
     def _load_programs(self):
         globe_vertex_shader = read_file(GLOBE_VERTEX_SHADER)
@@ -334,6 +343,29 @@ class Renderer:
                 mode=moderngl.LINES
             )
 
+
+        # Dragged Voronoi seed preview
+        if self.preview_region_vao is not None:
+            self.ctx.enable(moderngl.BLEND)
+            self.ctx.blend_func = (
+                moderngl.SRC_ALPHA,
+                moderngl.ONE_MINUS_SRC_ALPHA,
+            )
+
+            self.fill_program['u_color'].value = config.REGION_HOVER_COLOR
+            self.preview_region_vao.render(mode=moderngl.TRIANGLES)
+
+            self.vector_program['u_color'].value = config.VORONOI_EDGE_COLOR
+            self.ctx.line_width = 2.0
+            self.preview_outline_vao.render(mode=moderngl.LINES)
+
+            self.point_program['u_color'].value = config.VORONOI_SEED_COLOR
+            self.point_program['u_point_size'].value = config.VORONOI_SEED_SIZE
+            self.preview_seed_vao.render(mode=moderngl.POINTS)
+
+            self.ctx.disable(moderngl.BLEND)
+
+
         # Disable line clipping before calling imgui
         self.ctx.disable_direct(GL_CLIP_DISTANCE0)
 
@@ -483,20 +515,30 @@ class Renderer:
 
         return texture, vao
 
+
     def update_voronoi(self, world):
+        for name in ('voronoi_seed_vao', 'voronoi_edge_vao'):
+            vao = getattr(self, name)
+            if vao is not None:
+                vao.release()
+                setattr(self, name, None)
+
         seed_vertices = world.voronoi.seed_vertices
+
         if len(seed_vertices):
             self.voronoi_seed_vao = self._create_position_vao(
-                    seed_vertices,
-                    self.point_program,
-                    )
+                seed_vertices,
+                self.point_program,
+            )
 
         edge_vertices = world.voronoi.edge_vertices
+
         if len(edge_vertices):
             self.voronoi_edge_vao = self._create_position_vao(
-                    edge_vertices,
-                    self.vector_program,
-                    )
+                edge_vertices,
+                self.vector_program,
+            )
+
 
     def update_generated_borders(self, world):
         if self.generated_borders_vao is not None:
@@ -538,4 +580,75 @@ class Renderer:
                     self.vector_program,
                 )
             )
+
+
+    def clear_seed_preview(self):
+        for name in (
+            'preview_region_vao',
+            'preview_region_buffer',
+            'preview_outline_vao',
+            'preview_outline_buffer',
+            'preview_seed_vao',
+            'preview_seed_buffer',
+        ):
+            obj = getattr(self, name)
+            if obj is not None:
+                obj.release()
+                setattr(self, name, None)
+
+
+    def update_seed_preview(self, seed, boundary):
+        self.clear_seed_preview()
+
+        if len(boundary) < 3:
+            return
+
+        seed = np.asarray(seed, dtype='f4')
+        boundary = np.asarray(boundary, dtype='f4')
+
+        # Triangulate the convex spherical Voronoi cell
+        # using its generator as the triangle fan center.
+        next_vertices = np.roll(boundary, -1, axis=0)
+
+        triangles = np.stack(
+            (
+                np.broadcast_to(seed, boundary.shape),
+                boundary,
+                next_vertices,
+            ),
+            axis=1,
+        ).reshape(-1, 3).astype('f4')
+
+        self.preview_region_buffer = self.ctx.buffer(
+            triangles.tobytes()
+        )
+        self.preview_region_vao = self.ctx.simple_vertex_array(
+            self.fill_program,
+            self.preview_region_buffer,
+            'in_pos',
+        )
+
+        # Closed boundary, expressed as line pairs.
+        outline = np.stack(
+            (boundary, next_vertices),
+            axis=1,
+        ).reshape(-1, 3).astype('f4')
+
+        self.preview_outline_buffer = self.ctx.buffer(
+            outline.tobytes()
+        )
+        self.preview_outline_vao = self.ctx.simple_vertex_array(
+            self.vector_program,
+            self.preview_outline_buffer,
+            'in_pos',
+        )
+
+        self.preview_seed_buffer = self.ctx.buffer(
+            seed.reshape(1, 3).tobytes()
+        )
+        self.preview_seed_vao = self.ctx.simple_vertex_array(
+            self.point_program,
+            self.preview_seed_buffer,
+            'in_pos',
+        )
 

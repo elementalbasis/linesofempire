@@ -335,3 +335,18 @@ class World:
             vertices,
             dtype='f4',
         )
+
+
+    def move_voronoi_seed(self, index, point):
+        self.voronoi.move_seed(index, point)
+        self.borders = {}
+        self.partition.clear()
+        self._rebuild_regions_from_voronoi()
+
+
+    def remove_voronoi_seed(self, index):
+        self.voronoi.remove_seed(index)
+        self.borders = {}
+        self.partition.clear()
+        self._rebuild_regions_from_voronoi()
+

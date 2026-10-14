@@ -72,3 +72,56 @@ class Voronoi:
                 edges[edge_key].append(region_id)
 
         return edges
+
+
+    def nearest_seed(self, point, max_angle):
+        if point is None or not self.seeds:
+            return None
+
+        seeds = self.seed_vertices.astype('f8')
+        point = np.asarray(point, dtype='f8')
+
+        # Unit vectors: dot product = cosine of angular distance.
+        dots = seeds @ point
+        index = int(np.argmax(dots))
+
+        if dots[index] >= np.cos(max_angle):
+            return index
+
+        return None
+
+
+    def move_seed(self, index, point):
+        lon, lat = xyz_to_lonlat(*point)
+        self.seeds[index] = (lon, lat)
+        self.rebuild()
+
+
+    def remove_seed(self, index):
+        del self.seeds[index]
+        self.rebuild()
+
+
+
+    def preview_region(self, index, point):
+        if len(self.seeds) < 4:
+            return np.empty((0, 3), dtype='f4')
+
+        points = self.seed_vertices.astype('f8').copy()
+
+        point = np.asarray(point, dtype='f8')
+        point /= np.linalg.norm(point)
+        points[index] = point
+
+        try:
+            sv = SphericalVoronoi(points)
+            sv.sort_vertices_of_regions()
+        except ValueError:
+            # Coincident or otherwise degenerate seeds.
+            return np.empty((0, 3), dtype='f4')
+
+        return np.asarray(
+            sv.vertices[sv.regions[index]],
+            dtype='f4',
+        )
+
