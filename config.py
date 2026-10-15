@@ -83,3 +83,9 @@ NAVIGATION_LINE_SEARCH_STEPS = 8
 # Voronoi seed persistence
 SEED_FILE_DEFAULT = 'voronoi_seeds.json'
 SEED_FILE_PATH_MAX_LENGTH = 1024
+
+# Manual atom assignment overlay (visible in Edit / Atoms mode)
+ATOM_ORPHAN_FILL_COLOR = to_rgb('#ec7f53')
+ATOM_ORPHAN_FILL_OPACITY = 0.35
+ATOM_PENDING_FILL_COLOR = to_rgb('#f5d65b')
+ATOM_PENDING_FILL_OPACITY = 0.65

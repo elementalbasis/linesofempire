@@ -52,6 +52,7 @@ class SeedFileDialog:
                     world.replace_voronoi_seeds(seeds)
                     editor.cancel_drag(renderer)
                     editor.cancel_rectangle()
+                    editor.reset_atom_edit()
                     editor.selected[EditorLayer.VORONOI].clear()
                     editor.hovered[EditorLayer.VORONOI] = None
                     editor._refresh_geometry(world, renderer)
@@ -197,14 +198,16 @@ def draw_menu_bar(editor, world, renderer):
     # ----------------------------------------------------------
 
     if imgui.begin_menu('Borders', True):
-        if imgui.menu_item('Generate')[0]:
+        if imgui.menu_item('Generate Jagged Borders')[0]:
             world.generate_borders()
+            editor.reset_atom_edit()
             renderer.update_generated_borders(world)
             renderer.update_atoms(world)
             renderer.update_regions(world)
 
         if imgui.menu_item('Reroll Unfrozen')[0]:
             world.reroll_borders()
+            editor.reset_atom_edit()
             renderer.update_generated_borders(world)
             renderer.update_atoms(world)
             renderer.update_regions(world)
@@ -214,8 +217,26 @@ def draw_menu_bar(editor, world, renderer):
 
         imgui.separator()
 
+        if imgui.menu_item('Cut Into Atoms', enabled=bool(world.borders))[0]:
+            world.cut_borders()
+            editor.reset_atom_edit()
+            renderer.update_atoms(world)
+            renderer.update_regions(world)
+
+        if imgui.menu_item(
+            'Resolve Orphans Automatically',
+            enabled=bool(world.partition.orphan_ids),
+        )[0]:
+            world.resolve_orphans()
+            editor.reset_atom_edit()
+            renderer.update_atom_fills(world)
+            renderer.update_regions(world)
+
+        imgui.separator()
+
         if imgui.menu_item('Clear Generated Borders')[0]:
             world.clear_borders()
+            editor.reset_atom_edit()
             renderer.update_generated_borders(world)
             renderer.update_atoms(world)
             renderer.update_regions(world)
@@ -329,6 +350,16 @@ def draw_menu_bar(editor, world, renderer):
         )
 
         imgui.end_menu()
+
+    if editor.tool == EditorTool.EDIT and editor.layer == EditorLayer.ATOMS:
+        remaining = len(world.partition.orphan_ids)
+        if editor.pending_orphan is None:
+            imgui.text(f'Atom editor: {remaining} orphans | click an orphan')
+        else:
+            imgui.text(
+                f'Orphan {editor.pending_orphan}: click an assigned atom '
+                f'({remaining} remaining; Esc/right-click cancels)'
+            )
 
     imgui.end_main_menu_bar()
 

@@ -200,8 +200,21 @@ class World:
 
             self.borders[border.key] = border
 
+        self.partition.clear()
         self._rebuild_regions_from_borders()
+
+    def cut_borders(self):
+        """Intersect geographic boundaries and build atoms, without energy."""
+        if not self.borders:
+            raise ValueError('Generate jagged borders before cutting atoms.')
         self.partition.build_from_borders(self)
+
+    def resolve_orphans(self):
+        """Explicitly run automatic orphan assignment after cutting."""
+        self.partition.resolve_orphans()
+
+    def assign_orphan(self, orphan_id, target_id):
+        return self.partition.assign_orphan(orphan_id, target_id)
 
     @property
     def border_vertices(self):
@@ -273,7 +286,6 @@ class World:
             generate_land_border(border)
 
         self._rebuild_regions_from_borders()
-        self.partition.build_from_borders(self)
 
     @property
     def atom_edge_vertices(self):

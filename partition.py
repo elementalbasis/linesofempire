@@ -247,6 +247,7 @@ class Partition:
         self.components = []
 
         self.region_surface_types = {}
+        self.orphan_ids = set()
         self._land_domain = None
 
         self._vertex_lookup = {}
@@ -261,6 +262,7 @@ class Partition:
         self.components = []
 
         self.region_surface_types = {}
+        self.orphan_ids = set()
 
         self._vertex_lookup = {}
         self._edge_lookup = {}
@@ -896,6 +898,10 @@ class Partition:
         self._build_atoms()
 
     def build_from_borders(self, world):
+        """Cut the source geometry into atoms and identify seeded roots.
+
+        No automatic orphan assignment occurs during this operation.
+        """
         self.clear()
 
         border_arcs = self._border_arcs(world)
@@ -934,9 +940,9 @@ class Partition:
         self._assign_surface_types(world)
         self._assign_roots(world)
         self._build_components()
-
-        self._resolve_orphans()
-        self._assign_component_regions()
+        self.orphan_ids = {
+            atom.id for atom in self.atoms if atom.region_id is None
+        }
 
         '''
         roots = sum(
@@ -2185,9 +2191,58 @@ class Partition:
                 continue
 
             for atom_id in component.atom_ids:
-                self.atoms[
-                    atom_id
-                ].region_id = component.region_id
+                self.atoms[atom_id].region_id = component.region_id
+                self.orphan_ids.discard(atom_id)
+
+    def resolve_orphans(self):
+        """Run the optional automatic orphan-assignment energy algorithm."""
+        if not self.atoms:
+            raise ValueError('Cut borders into atoms before resolving orphans.')
+        if not self.orphan_ids:
+            return
+        self._resolve_orphans()
+        self._assign_component_regions()
+
+    def atom_at(self, point):
+        """Return the atom beneath a spherical point, including orphans."""
+        if point is None:
+            return None
+
+        for atom in self.atoms:
+            vertices = [
+                self.vertices[vertex_id].point
+                for vertex_id in atom.vertex_ids
+            ]
+            if spherical_polygon_contains(vertices, point):
+                return atom.id
+        return None
+
+    def assign_orphan(self, orphan_id, target_id):
+        """Attach an unassigned atom to the target atom's region.
+
+        The target must already belong to a seeded or assigned region.
+        """
+        if orphan_id not in self.orphan_ids:
+            raise ValueError('Source atom is not an orphan.')
+        if not 0 <= target_id < len(self.atoms):
+            raise ValueError('Target atom does not exist.')
+
+        region_id = self.atoms[target_id].region_id
+        if region_id is None:
+            raise ValueError('Target atom has not been assigned to a region.')
+
+        self.atoms[orphan_id].region_id = region_id
+        self.orphan_ids.remove(orphan_id)
+
+        # The cut operation starts with one component per atom. Keep
+        # component labels in sync for optional later automatic resolution.
+        for component in self.components:
+            if orphan_id in component.atom_ids:
+                component.region_id = region_id
+                component.parent = None
+                break
+
+        return region_id
 
     def edge_separates_regions(self, edge):
         if (
@@ -2228,19 +2283,5 @@ class Partition:
         )
 
     def region_at(self, point):
-        if point is None:
-            return None
-
-        for atom in self.atoms:
-            points = [
-                self.vertices[vertex_id].point
-                for vertex_id in atom.vertex_ids
-            ]
-
-            if spherical_polygon_contains(
-                points,
-                point,
-            ):
-                return atom.region_id
-
-        return None
+        atom_id = self.atom_at(point)
+        return None if atom_id is None else self.atoms[atom_id].region_id

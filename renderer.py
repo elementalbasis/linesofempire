@@ -5,7 +5,7 @@ from OpenGL.GL import GL_CLIP_DISTANCE0, GL_PROGRAM_POINT_SIZE
 from PIL import Image
 
 import config
-from editor import EditorLayer
+from editor import EditorLayer, EditorTool
 from common import (
         read_file,
         tangent_basis,
@@ -17,6 +17,7 @@ GLOBE_VERTEX_SHADER = 'shaders/globe.vert'
 HORIZON_GEOMETRY_SHADER = 'shaders/horizon.geom'
 DISK_VERTEX_SHADER = 'shaders/disk.vert'
 SOLID_FRAGMENT_SHADER = 'shaders/solid.frag'
+ATOM_FRAGMENT_SHADER = 'shaders/atom_fill.frag'
 VECTOR_GEOMETRY_SHADER = 'shaders/vector.geom'
 VECTOR_VERTEX_SHADER = 'shaders/vector.vert'
 POINT_VERTEX_SHADER = 'shaders/point.vert'
@@ -101,6 +102,14 @@ class Renderer:
         self.voronoi_overlay_buffers = {}
         self.voronoi_overlay_revision = 0
 
+        # Atom meshes are cached until the partition is rebuilt.
+        self.atom_face_meshes = {}
+        self.orphan_fill_vao = None
+        self.orphan_fill_buffer = None
+        self.pending_atom_id = None
+        self.pending_atom_vao = None
+        self.pending_atom_buffer = None
+
 
     # Load my custom OpenGL shaders
     def _load_programs(self):
@@ -108,6 +117,7 @@ class Renderer:
         horizon_geometry_shader = read_file(HORIZON_GEOMETRY_SHADER)
         disk_vertex_shader = read_file(DISK_VERTEX_SHADER)
         solid_fragment_shader = read_file(SOLID_FRAGMENT_SHADER)
+        atom_fragment_shader = read_file(ATOM_FRAGMENT_SHADER)
         vector_geometry_shader = read_file(VECTOR_GEOMETRY_SHADER)
         vector_vertex_shader = read_file(VECTOR_VERTEX_SHADER)
         point_vertex_shader = read_file(POINT_VERTEX_SHADER)
@@ -127,6 +137,12 @@ class Renderer:
             vertex_shader = globe_vertex_shader,
             geometry_shader = horizon_geometry_shader,
             fragment_shader = solid_fragment_shader,
+        )
+
+        self.atom_fill_program = self.ctx.program(
+            vertex_shader=globe_vertex_shader,
+            geometry_shader=horizon_geometry_shader,
+            fragment_shader=atom_fragment_shader,
         )
 
         self.screen_program = self.ctx.program(
@@ -158,6 +174,7 @@ class Renderer:
         for program in [
                 self.vector_program,
                 self.fill_program,
+                self.atom_fill_program,
                 self.screen_program,
                 self.point_program,
                 self.city_program,
@@ -249,6 +266,7 @@ class Renderer:
         # Editor overlays belong above surface fills and below vector lines.
         if editor is not None:
             self.render_voronoi_selection(editor)
+            self.render_atom_editor(editor)
 
         # Enable line clipping
         self.ctx.enable_direct(GL_CLIP_DISTANCE0)
@@ -576,7 +594,89 @@ class Renderer:
                 self.vector_program,
             )
 
+        self.update_atom_fills(world, rebuild_meshes=True)
+
+    def _release_atom_vao(self, kind):
+        for suffix in ('vao', 'buffer'):
+            name = f'{kind}_{suffix}'
+            obj = getattr(self, name)
+            if obj is not None:
+                obj.release()
+                setattr(self, name, None)
+
+    def update_atom_fills(self, world, rebuild_meshes=False):
+        """Refresh orphan shading without repeating spherical triangulation."""
+        partition = world.partition
+        if rebuild_meshes:
+            self.atom_face_meshes.clear()
+            for atom in partition.atoms:
+                if atom.id not in partition.orphan_ids:
+                    continue
+                points = np.asarray(
+                    [partition.vertices[i].point for i in atom.vertex_ids],
+                    dtype=np.float64,
+                )
+                if len(points) < 3:
+                    continue
+                center = normalize(points.mean(axis=0))
+                triangles = []
+                for a, b in zip(points, np.roll(points, -1, axis=0)):
+                    triangles.extend(subdivide_spherical_triangle(
+                        center, a, b, limit=config.MAX_TRIANGLE_ARC,
+                    ))
+                if triangles:
+                    self.atom_face_meshes[atom.id] = np.asarray(
+                        triangles, dtype='f4',
+                    )
+
+        self._release_atom_vao('orphan_fill')
+        self._release_atom_vao('pending_atom')
+        self.pending_atom_id = None
+
+        faces = [
+            self.atom_face_meshes[atom_id]
+            for atom_id in sorted(partition.orphan_ids)
+            if atom_id in self.atom_face_meshes
+        ]
+        if faces:
+            vertices = np.concatenate(faces)
+            self.orphan_fill_buffer = self.ctx.buffer(vertices.tobytes())
+            self.orphan_fill_vao = self.ctx.simple_vertex_array(
+                self.atom_fill_program, self.orphan_fill_buffer, 'in_pos',
+            )
+
+    def render_atom_editor(self, editor):
+        if editor.tool != EditorTool.EDIT or editor.layer != EditorLayer.ATOMS:
+            return
+        self.ctx.enable(moderngl.BLEND)
+        self.ctx.blend_func = (
+            moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA,
+        )
+
+        if self.orphan_fill_vao is not None:
+            self.atom_fill_program['u_color'].value = config.ATOM_ORPHAN_FILL_COLOR
+            self.atom_fill_program['u_opacity'].value = config.ATOM_ORPHAN_FILL_OPACITY
+            self.orphan_fill_vao.render(mode=moderngl.TRIANGLES)
+
+        pending = editor.pending_orphan
+        if pending != self.pending_atom_id:
+            self._release_atom_vao('pending_atom')
+            self.pending_atom_id = pending
+            mesh = self.atom_face_meshes.get(pending)
+            if mesh is not None:
+                self.pending_atom_buffer = self.ctx.buffer(mesh.tobytes())
+                self.pending_atom_vao = self.ctx.simple_vertex_array(
+                    self.atom_fill_program, self.pending_atom_buffer, 'in_pos',
+                )
+
+        if self.pending_atom_vao is not None:
+            self.atom_fill_program['u_color'].value = config.ATOM_PENDING_FILL_COLOR
+            self.atom_fill_program['u_opacity'].value = config.ATOM_PENDING_FILL_OPACITY
+            self.pending_atom_vao.render(mode=moderngl.TRIANGLES)
+
     def update_regions(self, world):
+        # A reassigned atom changes the triangles belonging to a region.
+        self.update_highlight(None)
         if self.region_edges_vao is not None:
             self.region_edges_vao.release()
             self.region_edges_vao = None

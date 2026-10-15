@@ -34,6 +34,7 @@ class EditorState:
         self.selection_end = None
         self.dragging_seed_id = None
         self.dragging_seed_point = None
+        self.pending_orphan = None
         self.navigation = NavigationController()
 
     @property
@@ -58,6 +59,11 @@ class EditorState:
     def cancel_rectangle(self):
         self.selection_start = None
         self.selection_end = None
+
+    def reset_atom_edit(self):
+        self.pending_orphan = None
+        self.selected[EditorLayer.ATOMS].clear()
+        self.hovered[EditorLayer.ATOMS] = None
 
     def cancel_drag(self, renderer):
         self.dragging_seed_id = None
@@ -101,6 +107,8 @@ class EditorState:
                     self.cancel_rectangle()
                 elif self.dragging_seed_id is not None:
                     self.cancel_drag(renderer)
+                elif self.pending_orphan is not None:
+                    self.pending_orphan = None
                 else:
                     self.clear_selection()
             elif event.key == pygame.K_a and event.mod & pygame.KMOD_CTRL:
@@ -110,6 +118,39 @@ class EditorState:
             self._selection_event(event, world, camera, width, height, capture_mouse)
         elif self.tool == EditorTool.EDIT and self.layer == EditorLayer.VORONOI:
             self._seed_event(event, world, camera, renderer, width, height, capture_mouse)
+        elif self.tool == EditorTool.EDIT and self.layer == EditorLayer.ATOMS:
+            self._atom_event(event, world, camera, renderer, width, height, capture_mouse)
+
+    def _atom_event(self, event, world, camera, renderer, width, height, capture_mouse):
+        if event.type != pygame.MOUSEBUTTONDOWN or capture_mouse:
+            return
+        if event.button == 3:
+            self.pending_orphan = None
+            return
+        if event.button != 1:
+            return
+
+        point = camera.screen_to_sphere(*event.pos, width, height)
+        atom_id = world.partition.atom_at(point)
+        if atom_id is None:
+            return
+
+        partition = world.partition
+        if self.pending_orphan is None:
+            if atom_id in partition.orphan_ids:
+                self.pending_orphan = atom_id
+            return
+
+        if atom_id in partition.orphan_ids:
+            # Clicking another orphan switches the source, without assigning
+            # it to an unassigned region.
+            self.pending_orphan = atom_id
+            return
+
+        world.assign_orphan(self.pending_orphan, atom_id)
+        self.pending_orphan = None
+        renderer.update_atom_fills(world)
+        renderer.update_regions(world)
 
     def _selection_event(self, event, world, camera, width, height, capture_mouse):
         voronoi = world.voronoi
@@ -158,12 +199,14 @@ class EditorState:
                     self.dragging_seed_point = point
                 else:
                     world.add_voronoi_seed(point)
+                    self.reset_atom_edit()
                     self._refresh_geometry(world, renderer)
             elif seed_id is not None:
                 world.remove_voronoi_seed(seed_id)
                 self.remap_after_seed_deletion(seed_id)
                 if not world.voronoi.region_indices:
                     self.selected[EditorLayer.VORONOI].clear()
+                self.reset_atom_edit()
                 self._refresh_geometry(world, renderer)
         elif event.type == pygame.MOUSEMOTION and self.dragging_seed_id is not None:
             point = camera.screen_to_sphere(*event.pos, width, height)
@@ -182,6 +225,7 @@ class EditorState:
                 old = world.voronoi.seed_vertices[index]
                 if not np.allclose(old, point, rtol=0, atol=config.VORONOI_MOVE_TOLERANCE):
                     world.move_voronoi_seed(index, point)
+                    self.reset_atom_edit()
                     self._refresh_geometry(world, renderer)
 
     @staticmethod
